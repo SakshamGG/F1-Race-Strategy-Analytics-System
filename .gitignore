@@ -1,0 +1,14 @@
+# Environment variables (contains DB password)
+.env
+
+# Python virtual environment
+venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE files
+.vscode/
+.idea/
