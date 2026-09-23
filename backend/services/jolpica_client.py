@@ -174,3 +174,75 @@ def fetch_race_results(season, round_number):
         })
 
     return results, total_laps
+
+
+def _parse_duration_seconds(raw_duration):
+    """Parse pit duration string into float seconds. Handles both '24.123' and '1:24.123'."""
+    if not raw_duration:
+        return 0.0
+    try:
+        parts = raw_duration.split(":")
+        if len(parts) == 2:
+            return float(parts[0]) * 60.0 + float(parts[1])
+        elif len(parts) == 3:
+            return float(parts[0]) * 3600.0 + float(parts[1]) * 60.0 + float(parts[2])
+        return float(raw_duration)
+    except Exception:
+        return 0.0
+
+
+def fetch_pit_stops(season, round_number):
+    """Fetch pit stop data for a specific race round from Jolpica API.
+
+    Returns list of dicts with keys:
+        driver_ref, lap_number, stop_number, stop_duration
+    """
+    url = f"{BASE_URL}/{season}/{round_number}/pitstops/?format=json&limit=100"
+    response = requests.get(url, timeout=TIMEOUT)
+    response.raise_for_status()
+    data = response.json()
+
+    races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
+    if not races or "PitStops" not in races[0]:
+        return []
+
+    pit_stops = races[0]["PitStops"]
+    return [
+        {
+            "driver_ref": p["driverId"],
+            "lap_number": int(p["lap"]),
+            "stop_number": int(p["stop"]),
+            "stop_duration": round(_parse_duration_seconds(p.get("duration", "0")), 3),
+        }
+        for p in pit_stops
+    ]
+
+
+def fetch_laps(season, round_number, limit=2000):
+    """Fetch lap timing records for a specific race round from Jolpica API.
+
+    Returns list of dicts with keys:
+        lap_number, driver_ref, position, lap_time
+    """
+    url = f"{BASE_URL}/{season}/{round_number}/laps/?format=json&limit={limit}"
+    response = requests.get(url, timeout=TIMEOUT)
+    response.raise_for_status()
+    data = response.json()
+
+    races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
+    if not races or "Laps" not in races[0]:
+        return []
+
+    laps_list = []
+    for lap in races[0]["Laps"]:
+        lap_num = int(lap["number"])
+        for timing in lap.get("Timings", []):
+            laps_list.append({
+                "lap_number": lap_num,
+                "driver_ref": timing["driverId"],
+                "position": int(timing["position"]) if timing.get("position") else None,
+                "lap_time": _convert_lap_time(timing.get("time")),
+            })
+
+    return laps_list
+
