@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Strategy Database</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1 class="sidebar-title">🏎️ F1 Strategy</h1>
+            <p class="sidebar-subtitle">Race Strategy &amp; Analytics Dashboard</p>
+        </div>
+        <div class="sidebar-status" id="backendStatus">
+            <span class="status-dot disconnected" id="statusDot"></span>
+            <span id="statusText">Checking...</span>
+        </div>
+        <ul class="nav-list">
+            <li><a href="#" class="nav-item active" data-section="dashboard">📊 Dashboard</a></li>
+            <li><a href="#" class="nav-item" data-section="drivers">🏁 Drivers</a></li>
+            <li><a href="#" class="nav-item" data-section="constructors">🏗️ Constructors</a></li>
+            <li><a href="#" class="nav-item" data-section="races">🏆 Races</a></li>
+            <li><a href="#" class="nav-item" data-section="standings">📈 Standings</a></li>
+            <li><a href="#" class="nav-item" data-section="analytics">🔬 Strategy Analytics</a></li>
+            <li><a href="#" class="nav-item" data-section="import">📥 Import Data</a></li>
+            <li><a href="#" class="nav-item" data-section="notes">📝 Strategy Notes</a></li>
+            <li><a href="#" class="nav-item" data-section="dbfeatures">⚙️ Database Features</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Toast Container -->
+        <div class="toast-container" id="toastContainer"></div>
+
+        <!-- ==================== DASHBOARD ==================== -->
+        <section class="content-section active" id="section-dashboard">
+            <h2 class="section-title">Dashboard Overview</h2>
+            <div class="stats-grid" id="dashboardStats">
+                <div class="stat-card" onclick="navigateTo('drivers')">
+                    <div class="stat-icon">🏁</div>
+                    <div class="stat-value" id="stat-drivers"><span class="spinner-small"></span></div>
+                    <div class="stat-label">Drivers</div>
+                </div>
+                <div class="stat-card" onclick="navigateTo('constructors')">
+                    <div class="stat-icon">🏗️</div>
+                    <div class="stat-value" id="stat-constructors"><span class="spinner-small"></span></div>
+                    <div class="stat-label">Constructors</div>
+                </div>
+                <div class="stat-card" onclick="navigateTo('races')">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-value" id="stat-races"><span class="spinner-small"></span></div>
+                    <div class="stat-label">Races</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🛣️</div>
+                    <div class="stat-value" id="stat-circuits"><span class="spinner-small"></span></div>
+                    <div class="stat-label">Circuits</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔴</div>
+                    <div class="stat-value" id="stat-tyres"><span class="spinner-small"></span></div>
+                    <div class="stat-label">Tyre Compounds</div>
+                </div>
+                <div class="stat-card" onclick="navigateTo('notes')">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value" id="stat-notes"><span class="spinner-small"></span></div>
+                    <div class="stat-label">Strategy Notes</div>
+                </div>
+            </div>
+
+            <!-- Demo Quick Access -->
+            <div class="card mt-2">
+                <h3>🎯 Quick Demo Flow</h3>
+                <p class="text-muted">Follow this sequence for a complete project demonstration:</p>
+                <div class="demo-flow">
+                    <button class="demo-step" onclick="navigateTo('dashboard')">1. Dashboard</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('drivers')">2. Drivers (CRUD)</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('races')">3. Race Results</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('standings')">4. Standings</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('import')">5. API Import</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('analytics')">6. Analytics</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('notes')">7. Strategy Notes</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('dbfeatures')">8. DB Features</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== DRIVERS ==================== -->
+        <section class="content-section" id="section-drivers">
+            <div class="section-header">
+                <h2 class="section-title">Drivers</h2>
+                <button class="btn btn-primary" onclick="showModal('driverModal')">+ Add Driver</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="driversTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>Nationality</th>
+                            <th>Date of Birth</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="driversBody">
+                        <tr><td colspan="6" class="text-center"><span class="spinner-small"></span> Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ==================== CONSTRUCTORS ==================== -->
+        <section class="content-section" id="section-constructors">
+            <div class="section-header">
+                <h2 class="section-title">Constructors</h2>
+                <button class="btn btn-primary" onclick="showModal('constructorModal')">+ Add Constructor</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="constructorsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Nationality</th>
+                            <th>Base Location</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="constructorsBody">
+                        <tr><td colspan="5" class="text-center"><span class="spinner-small"></span> Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ==================== RACES ==================== -->
+        <section class="content-section" id="section-races">
+            <h2 class="section-title">Races</h2>
+            <div class="table-container">
+                <table class="data-table" id="racesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Race Name</th>
+                            <th>Season</th>
+                            <th>Round</th>
+                            <th>Date</th>
+                            <th>Total Laps</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="racesBody">
+                        <tr><td colspan="7" class="text-center"><span class="spinner-small"></span> Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Race Results Panel -->
+            <div class="card mt-2 hidden" id="raceResultsPanel">
+                <div class="section-header">
+                    <h3 id="raceResultsTitle">Race Results</h3>
+                    <button class="btn btn-secondary" onclick="hideElement('raceResultsPanel')">✕ Close</button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Driver</th>
+                                <th>Team</th>
+                                <th>Grid</th>
+                                <th>Points</th>
+                                <th>Status</th>
+                                <th>Fastest Lap</th>
+                            </tr>
+                        </thead>
+                        <tbody id="raceResultsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STANDINGS ==================== -->
+        <section class="content-section" id="section-standings">
+            <h2 class="section-title">Championship Standings</h2>
+            <div class="form-inline mb-1">
+                <label>Season Year:</label>
+                <input type="number" id="standingsSeason" value="2024" min="1950" max="2030" class="input-small">
+                <button class="btn btn-primary" onclick="loadStandings()" id="btnLoadStandings">Load Standings</button>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchStandingsTab('drivers')">Drivers</button>
+                <button class="tab-btn" onclick="switchStandingsTab('constructors')">Constructors</button>
+            </div>
+            <!-- Driver Standings -->
+            <div class="tab-content active" id="tab-driverStandings">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Driver</th>
+                                <th>Team</th>
+                                <th>Points</th>
+                                <th>Wins</th>
+                                <th>Podiums</th>
+                            </tr>
+                        </thead>
+                        <tbody id="driverStandingsBody">
+                            <tr><td colspan="6" class="text-center text-muted">Enter a season year and click "Load Standings"</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Constructor Standings -->
+            <div class="tab-content" id="tab-constructorStandings">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Team</th>
+                                <th>Points</th>
+                                <th>Wins</th>
+                                <th>Podiums</th>
+                            </tr>
+                        </thead>
+                        <tbody id="constructorStandingsBody">
+                            <tr><td colspan="5" class="text-center text-muted">Enter a season year and click "Load Standings"</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STRATEGY ANALYTICS ==================== -->
+        <section class="content-section" id="section-analytics">
+            <h2 class="section-title">Strategy Analytics</h2>
+            <div class="cards-grid">
+                <!-- Tyre Degradation -->
+                <div class="card">
+                    <h3>🔴 Tyre Degradation Analysis</h3>
+                    <p class="text-muted">Calculate tyre degradation rates per compound</p>
+                    <div class="form-group">
+                        <label>Race ID (optional):</label>
+                        <input type="number" id="tyreDegRaceId" placeholder="Leave empty for latest">
+                    </div>
+                    <button class="btn btn-primary" onclick="runTyreDegradation()" id="btnTyreDeg">Run Analysis</button>
+                    <div class="result-box hidden" id="tyreDegResult"></div>
+                </div>
+
+                <!-- Strategy Simulation -->
+                <div class="card">
+                    <h3>🧪 Strategy Simulation</h3>
+                    <p class="text-muted">Simulate pit stop strategies using stored procedure</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Race ID:</label>
+                            <input type="number" id="simRaceId" placeholder="e.g. 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Driver ID:</label>
+                            <input type="number" id="simDriverId" placeholder="e.g. 1">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="runStrategySimulation()" id="btnSimStrategy">Run Simulation</button>
+                    <div class="result-box hidden" id="simStrategyResult"></div>
+                </div>
+
+                <!-- Undercut Simulation -->
+                <div class="card">
+                    <h3>⚡ Undercut Simulation</h3>
+                    <p class="text-muted">Predict position delta for an undercut attempt</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Race ID:</label>
+                            <input type="number" id="undercutRaceId" placeholder="e.g. 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Chaser Driver ID:</label>
+                            <input type="number" id="undercutChaserId" placeholder="e.g. 2">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Leader Driver ID:</label>
+                            <input type="number" id="undercutLeaderId" placeholder="e.g. 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Pit Lap:</label>
+                            <input type="number" id="undercutPitLap" placeholder="e.g. 20">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="runUndercutSimulation()" id="btnUndercut">Run Simulation</button>
+                    <div class="result-box hidden" id="undercutResult"></div>
+                </div>
+
+                <!-- Stint Comparison -->
+                <div class="card">
+                    <h3>📊 Stint Comparison</h3>
+                    <p class="text-muted">Compare head-to-head driver stint pace</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Race ID:</label>
+                            <input type="number" id="stintRaceId" placeholder="e.g. 1">
+                        </div>
+                        <div class="form-group">
+                            <label>Driver 1 ID:</label>
+                            <input type="number" id="stintDriver1Id" placeholder="e.g. 1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Driver 2 ID:</label>
+                        <input type="number" id="stintDriver2Id" placeholder="e.g. 2">
+                    </div>
+                    <button class="btn btn-primary" onclick="runStintComparison()" id="btnStint">Run Comparison</button>
+                    <div class="result-box hidden" id="stintResult"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== IMPORT DATA ==================== -->
+        <section class="content-section" id="section-import">
+            <h2 class="section-title">Import Data from External APIs</h2>
+            <p class="text-muted mb-1">Import real F1 data from the Jolpica F1 API and OpenF1 API into the database.</p>
+            <div class="cards-grid">
+                <!-- Import Drivers -->
+                <div class="card">
+                    <h3>🏁 Import Drivers</h3>
+                    <p class="text-muted">Fetch drivers from Jolpica API</p>
+                    <div class="form-group">
+                        <label>Season:</label>
+                        <input type="number" id="importDriversSeason" value="2024" min="1950" max="2030">
+                    </div>
+                    <button class="btn btn-primary" onclick="importData('drivers')" id="btnImportDrivers">Import Drivers</button>
+                    <div class="result-box hidden" id="importDriversResult"></div>
+                </div>
+
+                <!-- Import Constructors -->
+                <div class="card">
+                    <h3>🏗️ Import Constructors</h3>
+                    <p class="text-muted">Fetch constructors from Jolpica API</p>
+                    <div class="form-group">
+                        <label>Season:</label>
+                        <input type="number" id="importConstructorsSeason" value="2024" min="1950" max="2030">
+                    </div>
+                    <button class="btn btn-primary" onclick="importData('constructors')" id="btnImportConstructors">Import Constructors</button>
+                    <div class="result-box hidden" id="importConstructorsResult"></div>
+                </div>
+
+                <!-- Import Circuits -->
+                <div class="card">
+                    <h3>🛣️ Import Circuits</h3>
+                    <p class="text-muted">Fetch circuits from Jolpica API</p>
+                    <div class="form-group">
+                        <label>Season:</label>
+                        <input type="number" id="importCircuitsSeason" value="2024" min="1950" max="2030">
+                    </div>
+                    <button class="btn btn-primary" onclick="importData('circuits')" id="btnImportCircuits">Import Circuits</button>
+                    <div class="result-box hidden" id="importCircuitsResult"></div>
+                </div>
+
+                <!-- Import Races -->
+                <div class="card">
+                    <h3>🏆 Import Races</h3>
+                    <p class="text-muted">Fetch race schedule from Jolpica API</p>
+                    <div class="form-group">
+                        <label>Season:</label>
+                        <input type="number" id="importRacesSeason" value="2024" min="1950" max="2030">
+                    </div>
+                    <button class="btn btn-primary" onclick="importData('races')" id="btnImportRaces">Import Races</button>
+                    <div class="result-box hidden" id="importRacesResult"></div>
+                </div>
+
+                <!-- Import Results -->
+                <div class="card">
+                    <h3>🏅 Import Race Results</h3>
+                    <p class="text-muted">Fetch results for a specific race round</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Season:</label>
+                            <input type="number" id="importResultsSeason" value="2024" min="1950" max="2030">
+                        </div>
+                        <div class="form-group">
+                            <label>Round:</label>
+                            <input type="number" id="importResultsRound" value="1" min="1" max="24">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="importResults()" id="btnImportResults">Import Results</button>
+                    <div class="result-box hidden" id="importResultsResult"></div>
+                </div>
+
+                <!-- Import Laps -->
+                <div class="card">
+                    <h3>⏱️ Import Lap Times</h3>
+                    <p class="text-muted">Fetch lap telemetry from OpenF1 / Jolpica</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Season:</label>
+                            <input type="number" id="importLapsSeason" value="2024" min="1950" max="2030">
+                        </div>
+                        <div class="form-group">
+                            <label>Round:</label>
+                            <input type="number" id="importLapsRound" value="1" min="1" max="24">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="importLaps()" id="btnImportLaps">Import Laps</button>
+                    <div class="result-box hidden" id="importLapsResult"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== STRATEGY NOTES ==================== -->
+        <section class="content-section" id="section-notes">
+            <div class="section-header">
+                <h2 class="section-title">Strategy Notes</h2>
+                <div>
+                    <button class="btn btn-secondary" onclick="loadAuditLog()">📋 View Audit Log</button>
+                    <button class="btn btn-primary" onclick="showModal('noteModal')">+ Add Note</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="notesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Race ID</th>
+                            <th>Analyst ID</th>
+                            <th>Driver ID</th>
+                            <th>Note</th>
+                            <th>Type</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notesBody">
+                        <tr><td colspan="8" class="text-center"><span class="spinner-small"></span> Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Audit Log Panel -->
+            <div class="card mt-2 hidden" id="auditLogPanel">
+                <div class="section-header">
+                    <h3>📋 Strategy Notes Audit Log</h3>
+                    <button class="btn btn-secondary" onclick="hideElement('auditLogPanel')">✕ Close</button>
+                </div>
+                <p class="text-muted">Triggered automatically by database triggers on INSERT, UPDATE, DELETE</p>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Audit ID</th>
+                                <th>Action</th>
+                                <th>Note ID</th>
+                                <th>Race</th>
+                                <th>Driver</th>
+                                <th>Old Text</th>
+                                <th>New Text</th>
+                                <th>Changed By</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditLogBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== DATABASE FEATURES ==================== -->
+        <section class="content-section" id="section-dbfeatures">
+            <h2 class="section-title">Database Features Demonstration</h2>
+            <p class="text-muted mb-1">Advanced DBMS features implemented in this project:</p>
+            <div class="cards-grid">
+                <div class="card feature-card">
+                    <h3>✅ CRUD Operations</h3>
+                    <p>Full Create, Read, Update, Delete on all 12 entities (Drivers, Constructors, Circuits, Races, etc.)</p>
+                    <button class="btn btn-secondary" onclick="navigateTo('drivers')">Demo → Drivers CRUD</button>
+                </div>
+                <div class="card feature-card">
+                    <h3>✅ Foreign Keys</h3>
+                    <p>18 foreign key constraints enforce referential integrity across all related tables.</p>
+                    <button class="btn btn-secondary" onclick="navigateTo('races')">Demo → View Races</button>
+                </div>
+                <div class="card feature-card">
+                    <h3>✅ JOIN Queries</h3>
+                    <p>Multi-table JOINs for race results, standings, and telemetry with human-readable output.</p>
+                    <button class="btn btn-secondary" onclick="navigateTo('races')">Demo → Race Results (JOINs)</button>
+                </div>
+                <div class="card feature-card">
+                    <h3>✅ Database Views</h3>
+                    <p>5 views: v_race_results_detailed, v_lap_times_detailed, v_pit_stops_detailed, v_driver_standings, v_constructor_standings</p>
+                    <button class="btn btn-secondary" onclick="navigateTo('standings')">Demo → Standings View</button>
+                </div>
+                <div class="card feature-card">
+                    <h3>✅ Triggers</h3>
+                    <p>7 triggers: lap/pit validation, F1 tyre rule enforcement, and full audit trail on strategy notes.</p>
+                    <button class="btn btn-secondary" onclick="navigateTo('notes')">Demo → Audit Log (Triggers)</button>
+                </div>
+                <div class="card feature-card">
+                    <h3>✅ Stored Procedures</h3>
+                    <p>sp_recalculate_standings, sp_simulate_strategy, sp_validate_race_tyre_rules</p>
+                    <div class="btn-group mt-1">
+                        <button class="btn btn-primary" onclick="runRecalculateStandings()" id="btnRecalculate">Recalculate Standings</button>
+                        <button class="btn btn-primary" onclick="runValidateTyreRules()" id="btnValidateTyre">Validate Tyre Rules</button>
+                    </div>
+                    <div class="result-box hidden mt-1" id="dbFeatureResult"></div>
+                </div>
+                <div class="card feature-card">
+                    <h3>✅ External API Integration</h3>
+                    <p>Jolpica F1 API (drivers, constructors, circuits, races, results, laps, pit stops) and OpenF1 API (weather, telemetry).</p>
+                    <button class="btn btn-secondary" onclick="navigateTo('import')">Demo → Import Data</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Driver Modal -->
+    <div class="modal-overlay hidden" id="driverModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="driverModalTitle">Add Driver</h3>
+                <button class="modal-close" onclick="hideModal('driverModal')">✕</button>
+            </div>
+            <form id="driverForm" onsubmit="submitDriver(event)">
+                <input type="hidden" id="driverEditId">
+                <div class="form-group">
+                    <label>First Name *</label>
+                    <input type="text" id="driverFirstName" required placeholder="e.g. Lewis">
+                </div>
+                <div class="form-group">
+                    <label>Last Name *</label>
+                    <input type="text" id="driverLastName" required placeholder="e.g. Hamilton">
+                </div>
+                <div class="form-group">
+                    <label>Nationality *</label>
+                    <input type="text" id="driverNationality" required placeholder="e.g. British">
+                </div>
+                <div class="form-group">
+                    <label>Date of Birth *</label>
+                    <input type="date" id="driverDOB" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('driverModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitDriver">Save Driver</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Constructor Modal -->
+    <div class="modal-overlay hidden" id="constructorModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="constructorModalTitle">Add Constructor</h3>
+                <button class="modal-close" onclick="hideModal('constructorModal')">✕</button>
+            </div>
+            <form id="constructorForm" onsubmit="submitConstructor(event)">
+                <input type="hidden" id="constructorEditId">
+                <div class="form-group">
+                    <label>Team Name *</label>
+                    <input type="text" id="constructorName" required placeholder="e.g. Mercedes">
+                </div>
+                <div class="form-group">
+                    <label>Nationality *</label>
+                    <input type="text" id="constructorNationality" required placeholder="e.g. German">
+                </div>
+                <div class="form-group">
+                    <label>Base Location *</label>
+                    <input type="text" id="constructorBase" required placeholder="e.g. Brackley, UK">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('constructorModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitConstructor">Save Constructor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Strategy Note Modal -->
+    <div class="modal-overlay hidden" id="noteModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="noteModalTitle">Add Strategy Note</h3>
+                <button class="modal-close" onclick="hideModal('noteModal')">✕</button>
+            </div>
+            <form id="noteForm" onsubmit="submitNote(event)">
+                <input type="hidden" id="noteEditId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Race ID *</label>
+                        <input type="number" id="noteRaceId" required placeholder="e.g. 1">
+                    </div>
+                    <div class="form-group">
+                        <label>Analyst ID *</label>
+                        <input type="number" id="noteAnalystId" required placeholder="e.g. 1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Driver ID *</label>
+                    <input type="number" id="noteDriverId" required placeholder="e.g. 1">
+                </div>
+                <div class="form-group">
+                    <label>Note Type *</label>
+                    <select id="noteType" required>
+                        <option value="Observation">Observation</option>
+                        <option value="Recommendation">Recommendation</option>
+                        <option value="Post-Race Review">Post-Race Review</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Note Text *</label>
+                    <textarea id="noteText" required rows="4" placeholder="Enter strategy note..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('noteModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitNote">Save Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
