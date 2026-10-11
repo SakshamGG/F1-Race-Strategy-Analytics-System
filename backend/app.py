@@ -108,17 +108,208 @@ def test_db():
 
 
 # ==============================================================================
-# DRIVERS
+# STANDINGS HELPER & DRIVERS
 # ==============================================================================
+
+def sync_season_standings_helper(season, cur, conn):
+    """Fetch official standings from Jolpica API and store in DRIVER_STANDINGS, CONSTRUCTOR_STANDINGS, DRIVER_SEASONS, and CONSTRUCTOR_SEASONS."""
+    from services.jolpica_client import fetch_driver_standings as fetch_api_driver_standings, fetch_constructor_standings as fetch_api_constructor_standings
+    
+    api_drivers = fetch_api_driver_standings(season)
+    api_constructors = fetch_api_constructor_standings(season)
+
+    if not api_drivers and not api_constructors:
+        return False
+
+    # Ensure SEASONS relationship tables exist
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS CONSTRUCTOR_SEASONS (
+            constructor_id INT NOT NULL,
+            season_year INT NOT NULL,
+            PRIMARY KEY (constructor_id, season_year),
+            FOREIGN KEY (constructor_id) REFERENCES CONSTRUCTORS(constructor_id) ON DELETE CASCADE
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS DRIVER_SEASONS (
+            driver_id INT NOT NULL,
+            season_year INT NOT NULL,
+            PRIMARY KEY (driver_id, season_year),
+            FOREIGN KEY (driver_id) REFERENCES DRIVERS(driver_id) ON DELETE CASCADE
+        )
+    """)
+
+    # Pre-fetch existing drivers
+    cur.execute("SELECT driver_id, first_name, last_name FROM DRIVERS")
+    driver_map = {(d["first_name"].strip().lower(), d["last_name"].strip().lower()): d["driver_id"] for d in cur.fetchall()}
+
+    # Pre-fetch existing constructors
+    cur.execute("SELECT constructor_id, name FROM CONSTRUCTORS")
+    const_map = {c["name"].strip().lower(): c["constructor_id"] for c in cur.fetchall()}
+
+    # Clear previous standings for this season
+    cur.execute("DELETE FROM DRIVER_STANDINGS WHERE season_year = %s", (season,))
+    cur.execute("DELETE FROM CONSTRUCTOR_STANDINGS WHERE season_year = %s", (season,))
+
+    for c in api_constructors:
+        cname = c["team_name"]
+        cid = const_map.get(cname.strip().lower())
+        if not cid:
+            cur.execute(
+                "INSERT INTO CONSTRUCTORS (name, nationality, base_location) VALUES (%s, %s, %s)",
+                (cname, c.get("team_nationality", "Unknown"), "N/A")
+            )
+            cid = cur.lastrowid
+            const_map[cname.strip().lower()] = cid
+
+        cur.execute(
+            """INSERT INTO CONSTRUCTOR_STANDINGS (season_year, constructor_id, position, points, wins, podiums)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (season, cid, c["position"], c["total_points"], c["wins"], c["podiums"])
+        )
+        cur.execute("INSERT IGNORE INTO CONSTRUCTOR_SEASONS (constructor_id, season_year) VALUES (%s, %s)", (cid, season))
+
+    for d in api_drivers:
+        dkey = (d["driver_first_name"].strip().lower(), d["driver_last_name"].strip().lower())
+        did = driver_map.get(dkey)
+        if not did:
+            cur.execute(
+                "INSERT INTO DRIVERS (first_name, last_name, nationality, date_of_birth) VALUES (%s, %s, %s, %s)",
+                (d["driver_first_name"], d["driver_last_name"], d["driver_nationality"], d["driver_dob"])
+            )
+            did = cur.lastrowid
+            driver_map[dkey] = did
+
+        cur.execute("INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year) VALUES (%s, %s)", (did, season))
+        cur.execute(
+            """INSERT INTO DRIVER_STANDINGS (season_year, driver_id, position, points, wins, podiums, team_name)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+            (season, did, d["position"], d["total_points"], d["wins"], d["podiums"], d["team_name"])
+        )
+
+    conn.commit()
+    return True
+
 
 @app.route("/api/drivers")
 def get_drivers():
+    season_param = request.args.get("season", "").strip()
     conn = None
     cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM DRIVERS")
+
+        if season_param and season_param.lower() != "all" and season_param.isdigit():
+            season_year = int(season_param)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS DRIVER_SEASONS (
+                    driver_id INT NOT NULL,
+                    season_year INT NOT NULL,
+                    PRIMARY KEY (driver_id, season_year),
+                    FOREIGN KEY (driver_id) REFERENCES DRIVERS(driver_id) ON DELETE CASCADE
+                )
+            """)
+
+            # Ensure standings are populated for this season so drivers are ordered by championship standings
+            cur.execute("SELECT COUNT(*) AS cnt FROM DRIVER_STANDINGS WHERE season_year = %s", (season_year,))
+            if cur.fetchone()["cnt"] == 0:
+                try:
+                    sync_season_standings_helper(season_year, cur, conn)
+                except Exception:
+                    pass
+
+            cur.execute("SELECT COUNT(*) AS cnt FROM DRIVER_SEASONS WHERE season_year = %s", (season_year,))
+            if cur.fetchone()["cnt"] == 0:
+                # Link any drivers from RACE_RESULTS for this season
+                cur.execute("""
+                    INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year)
+                    SELECT DISTINCT rr.driver_id, r.season_year 
+                    FROM RACE_RESULTS rr 
+                    JOIN RACES r ON rr.race_id = r.race_id 
+                    WHERE r.season_year = %s
+                """, (season_year,))
+                # Also link any drivers from DRIVER_STANDINGS
+                cur.execute("""
+                    INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year)
+                    SELECT DISTINCT driver_id, season_year
+                    FROM DRIVER_STANDINGS
+                    WHERE season_year = %s
+                """, (season_year,))
+                conn.commit()
+
+                cur.execute("SELECT COUNT(*) AS cnt FROM DRIVER_SEASONS WHERE season_year = %s", (season_year,))
+                if cur.fetchone()["cnt"] == 0:
+                    try:
+                        from services.jolpica_client import fetch_drivers
+                        api_drivers = fetch_drivers(season_year)
+                        for d in api_drivers:
+                            cur.execute(
+                                "SELECT driver_id, nationality, date_of_birth FROM DRIVERS WHERE LOWER(first_name) = LOWER(%s) AND LOWER(last_name) = LOWER(%s)",
+                                (d["first_name"], d["last_name"])
+                            )
+                            existing = cur.fetchone()
+                            if existing:
+                                did = existing["driver_id"]
+                                update_fields = []
+                                update_vals = []
+                                if existing.get("nationality") == "Unknown" and d["nationality"] != "Unknown":
+                                    update_fields.append("nationality = %s")
+                                    update_vals.append(d["nationality"])
+                                if str(existing.get("date_of_birth")) in ("2000-01-01", "None") and d["date_of_birth"] != "2000-01-01":
+                                    update_fields.append("date_of_birth = %s")
+                                    update_vals.append(d["date_of_birth"])
+                                if update_fields:
+                                    update_vals.append(did)
+                                    cur.execute(f"UPDATE DRIVERS SET {', '.join(update_fields)} WHERE driver_id = %s", tuple(update_vals))
+                            else:
+                                cur.execute(
+                                    "INSERT INTO DRIVERS (first_name, last_name, nationality, date_of_birth) VALUES (%s, %s, %s, %s)",
+                                    (d["first_name"], d["last_name"], d["nationality"], d["date_of_birth"])
+                                )
+                                did = cur.lastrowid
+                            cur.execute("INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year) VALUES (%s, %s)", (did, season_year))
+                        conn.commit()
+                    except Exception:
+                        pass
+
+            # Query drivers for the season arranged strictly in the order of their championship standings that year
+            cur.execute("""
+                SELECT DISTINCT d.driver_id, d.first_name, d.last_name, d.nationality, d.date_of_birth,
+                       COALESCE(
+                           st.team_name,
+                           (SELECT c.name FROM DRIVER_CONTRACTS dc JOIN CONSTRUCTORS c ON dc.constructor_id = c.constructor_id WHERE dc.driver_id = d.driver_id AND dc.season_year = ds.season_year LIMIT 1),
+                           (SELECT c.name FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE rr.driver_id = d.driver_id AND r.season_year = ds.season_year LIMIT 1),
+                           (SELECT c.name FROM DRIVER_CONTRACTS dc JOIN CONSTRUCTORS c ON dc.constructor_id = c.constructor_id WHERE dc.driver_id = d.driver_id ORDER BY dc.season_year DESC LIMIT 1),
+                           (SELECT c.name FROM RACE_RESULTS rr JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE rr.driver_id = d.driver_id LIMIT 1)
+                       ) AS team_name,
+                       st.position AS standing_position,
+                       st.points AS standing_points,
+                       st.wins AS standing_wins
+                FROM DRIVERS d
+                JOIN DRIVER_SEASONS ds ON d.driver_id = ds.driver_id
+                LEFT JOIN DRIVER_STANDINGS st ON d.driver_id = st.driver_id AND st.season_year = ds.season_year
+                WHERE ds.season_year = %s
+                ORDER BY 
+                    CASE WHEN st.position IS NOT NULL AND st.position > 0 THEN st.position ELSE 9999 END ASC,
+                    COALESCE(st.points, 0) DESC,
+                    d.last_name ASC, d.first_name ASC
+            """, (season_year,))
+            rows = cur.fetchall()
+            return jsonify(serialize_rows(rows))
+
+        cur.execute("""
+            SELECT d.driver_id, d.first_name, d.last_name, d.nationality, d.date_of_birth,
+                   COALESCE(
+                       (SELECT c.name FROM DRIVER_CONTRACTS dc JOIN CONSTRUCTORS c ON dc.constructor_id = c.constructor_id WHERE dc.driver_id = d.driver_id ORDER BY dc.season_year DESC LIMIT 1),
+                       (SELECT c.name FROM RACE_RESULTS rr JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE rr.driver_id = d.driver_id LIMIT 1)
+                   ) AS team_name,
+                   NULL AS standing_position,
+                   NULL AS standing_points,
+                   NULL AS standing_wins
+            FROM DRIVERS d
+            ORDER BY d.last_name ASC, d.first_name ASC
+        """)
         rows = cur.fetchall()
         return jsonify(serialize_rows(rows))
     except Exception as e:
@@ -235,12 +426,104 @@ def delete_driver(driver_id):
 
 @app.route("/api/constructors")
 def get_constructors():
+    season_param = request.args.get("season", "").strip()
     conn = None
     cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM CONSTRUCTORS")
+
+        if season_param and season_param.lower() != "all" and season_param.isdigit():
+            season_year = int(season_param)
+            # Ensure CONSTRUCTOR_SEASONS table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS CONSTRUCTOR_SEASONS (
+                    constructor_id INT NOT NULL,
+                    season_year INT NOT NULL,
+                    PRIMARY KEY (constructor_id, season_year),
+                    FOREIGN KEY (constructor_id) REFERENCES CONSTRUCTORS(constructor_id) ON DELETE CASCADE
+                )
+            """)
+
+            # Ensure standings are populated for this season so constructors are ordered by standings
+            cur.execute("SELECT COUNT(*) AS cnt FROM CONSTRUCTOR_STANDINGS WHERE season_year = %s", (season_year,))
+            if cur.fetchone()["cnt"] == 0:
+                try:
+                    sync_season_standings_helper(season_year, cur, conn)
+                except Exception:
+                    pass
+
+            # Link any constructors from CONSTRUCTOR_STANDINGS for this season
+            cur.execute("""
+                INSERT IGNORE INTO CONSTRUCTOR_SEASONS (constructor_id, season_year)
+                SELECT constructor_id, season_year FROM CONSTRUCTOR_STANDINGS WHERE season_year = %s
+            """, (season_year,))
+            conn.commit()
+
+            # Check if this season has records in CONSTRUCTOR_SEASONS
+            cur.execute("SELECT COUNT(*) AS cnt FROM CONSTRUCTOR_SEASONS WHERE season_year = %s", (season_year,))
+            if cur.fetchone()["cnt"] == 0:
+                # Link any constructors from RACE_RESULTS for this season
+                cur.execute("""
+                    INSERT IGNORE INTO CONSTRUCTOR_SEASONS (constructor_id, season_year)
+                    SELECT DISTINCT rr.constructor_id, r.season_year 
+                    FROM RACE_RESULTS rr 
+                    JOIN RACES r ON rr.race_id = r.race_id 
+                    WHERE r.season_year = %s AND rr.constructor_id IS NOT NULL
+                """, (season_year,))
+                conn.commit()
+
+                cur.execute("SELECT COUNT(*) AS cnt FROM CONSTRUCTOR_SEASONS WHERE season_year = %s", (season_year,))
+                if cur.fetchone()["cnt"] == 0:
+                    # Dynamically fetch from Jolpica API and link constructors
+                    try:
+                        from services.jolpica_client import fetch_constructors
+                        api_constructors = fetch_constructors(season_year)
+                        for c in api_constructors:
+                            cur.execute("SELECT constructor_id, base_location FROM CONSTRUCTORS WHERE LOWER(name) = LOWER(%s)", (c["name"],))
+                            existing = cur.fetchone()
+                            if existing:
+                                cid = existing["constructor_id"]
+                                if existing.get("base_location") in ("N/A", "") and c.get("base_location") not in ("N/A", ""):
+                                    cur.execute("UPDATE CONSTRUCTORS SET base_location = %s WHERE constructor_id = %s", (c["base_location"], cid))
+                            else:
+                                cur.execute(
+                                    "INSERT INTO CONSTRUCTORS (name, nationality, base_location) VALUES (%s, %s, %s)",
+                                    (c["name"], c["nationality"], c["base_location"])
+                                )
+                                cid = cur.lastrowid
+                            cur.execute("INSERT IGNORE INTO CONSTRUCTOR_SEASONS (constructor_id, season_year) VALUES (%s, %s)", (cid, season_year))
+                        conn.commit()
+                    except Exception:
+                        pass
+
+            # Query constructors for the season arranged strictly in the order of their championship standings that year
+            cur.execute("""
+                SELECT DISTINCT c.constructor_id, c.name, c.nationality, c.base_location,
+                       st.position AS standing_position,
+                       st.points AS standing_points,
+                       st.wins AS standing_wins
+                FROM CONSTRUCTORS c
+                JOIN CONSTRUCTOR_SEASONS cs ON c.constructor_id = cs.constructor_id
+                LEFT JOIN CONSTRUCTOR_STANDINGS st ON c.constructor_id = st.constructor_id AND st.season_year = cs.season_year
+                WHERE cs.season_year = %s
+                ORDER BY 
+                    CASE WHEN st.position IS NOT NULL AND st.position > 0 THEN st.position ELSE 9999 END ASC,
+                    COALESCE(st.points, 0) DESC,
+                    c.name ASC
+            """, (season_year,))
+            rows = cur.fetchall()
+            return jsonify(serialize_rows(rows))
+
+        # Default: all constructors
+        cur.execute("""
+            SELECT c.constructor_id, c.name, c.nationality, c.base_location,
+                   NULL AS standing_position,
+                   NULL AS standing_points,
+                   NULL AS standing_wins
+            FROM CONSTRUCTORS c 
+            ORDER BY c.name ASC
+        """)
         rows = cur.fetchall()
         return jsonify(serialize_rows(rows))
     except Exception as e:
@@ -722,12 +1005,57 @@ def delete_analyst(analyst_id):
 
 @app.route("/api/races")
 def get_races():
+    season_param = request.args.get("season", "").strip()
     conn = None
     cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM RACES")
+
+        if season_param and season_param.lower() != "all" and season_param.isdigit():
+            season_year = int(season_param)
+            cur.execute("SELECT COUNT(*) AS cnt FROM RACES WHERE season_year = %s", (season_year,))
+            if cur.fetchone()["cnt"] == 0:
+                try:
+                    from services.jolpica_client import fetch_races
+                    api_races = fetch_races(season_year)
+                    for r in api_races:
+                        cur.execute("SELECT circuit_id FROM CIRCUITS WHERE name = %s", (r["circuit_name"],))
+                        circ = cur.fetchone()
+                        if circ:
+                            circuit_id = circ["circuit_id"]
+                        else:
+                            cur.execute(
+                                "INSERT INTO CIRCUITS (name, country, city, length_km, number_of_turns) VALUES (%s, %s, %s, 0.000, 0)",
+                                (r["circuit_name"], r.get("circuit_country", "Unknown"), r.get("circuit_city", "Unknown"))
+                            )
+                            circuit_id = cur.lastrowid
+                        cur.execute(
+                            "INSERT INTO RACES (circuit_id, season_year, race_name, race_date, total_laps, round_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                            (circuit_id, r["season_year"], r["race_name"], r["race_date"], r["total_laps"], r["round_number"])
+                        )
+                    conn.commit()
+                except Exception:
+                    pass
+
+            cur.execute("""
+                SELECT r.race_id, r.race_name, r.season_year, r.round_number, r.race_date, r.total_laps,
+                       c.circuit_id, c.name AS circuit_name, c.country AS circuit_country, c.city AS circuit_city
+                FROM RACES r
+                LEFT JOIN CIRCUITS c ON r.circuit_id = c.circuit_id
+                WHERE r.season_year = %s
+                ORDER BY r.round_number ASC
+            """, (season_year,))
+            rows = cur.fetchall()
+            return jsonify(serialize_rows(rows))
+
+        cur.execute("""
+            SELECT r.race_id, r.race_name, r.season_year, r.round_number, r.race_date, r.total_laps,
+                   c.circuit_id, c.name AS circuit_name, c.country AS circuit_country, c.city AS circuit_city
+            FROM RACES r
+            LEFT JOIN CIRCUITS c ON r.circuit_id = c.circuit_id
+            ORDER BY r.season_year DESC, r.round_number ASC
+        """)
         rows = cur.fetchall()
         return jsonify(serialize_rows(rows))
     except Exception as e:
@@ -1678,26 +2006,53 @@ def import_drivers(season):
         inserted = 0
         skipped = 0
 
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS DRIVER_SEASONS (
+                driver_id INT NOT NULL,
+                season_year INT NOT NULL,
+                PRIMARY KEY (driver_id, season_year),
+                FOREIGN KEY (driver_id) REFERENCES DRIVERS(driver_id) ON DELETE CASCADE
+            )
+        """)
+
         for d in api_drivers:
             cur.execute(
-                "SELECT driver_id FROM DRIVERS WHERE first_name = %s AND last_name = %s",
+                "SELECT driver_id, nationality, date_of_birth FROM DRIVERS WHERE first_name = %s AND last_name = %s",
                 (d["first_name"], d["last_name"])
             )
-            if cur.fetchone():
+            existing = cur.fetchone()
+            if existing:
+                # Update placeholder data if existing record has Unknown/placeholder
+                update_fields = []
+                update_vals = []
+                if existing.get("nationality") == "Unknown" and d["nationality"] != "Unknown":
+                    update_fields.append("nationality = %s")
+                    update_vals.append(d["nationality"])
+                if str(existing.get("date_of_birth")) in ("2000-01-01", "None") and d["date_of_birth"] != "2000-01-01":
+                    update_fields.append("date_of_birth = %s")
+                    update_vals.append(d["date_of_birth"])
+                if update_fields:
+                    update_vals.append(existing["driver_id"])
+                    cur.execute(f"UPDATE DRIVERS SET {', '.join(update_fields)} WHERE driver_id = %s", tuple(update_vals))
+                cur.execute("INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year) VALUES (%s, %s)", (existing["driver_id"], season))
                 skipped += 1
                 continue
+
             cur.execute(
                 "INSERT INTO DRIVERS (first_name, last_name, nationality, date_of_birth) VALUES (%s, %s, %s, %s)",
                 (d["first_name"], d["last_name"], d["nationality"], d["date_of_birth"])
             )
+            did = cur.lastrowid
+            cur.execute("INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year) VALUES (%s, %s)", (did, season))
             inserted += 1
 
         conn.commit()
         return jsonify({
-            "message": f"Import complete for {season} season",
+            "message": f"Import complete for {season} season ({inserted} added, {skipped} already existed in database)",
             "inserted": inserted,
             "skipped": skipped,
             "total_from_api": len(api_drivers),
+            "skipped_reason": "Skipped drivers already exist in your database to prevent duplicate entries."
         })
     except mysql.connector.IntegrityError as e:
         safe_rollback(conn)
@@ -1725,8 +2080,14 @@ def import_constructors(season):
         skipped = 0
 
         for c in api_constructors:
-            cur.execute("SELECT constructor_id FROM CONSTRUCTORS WHERE name = %s", (c["name"],))
-            if cur.fetchone():
+            cur.execute("SELECT constructor_id, base_location FROM CONSTRUCTORS WHERE name = %s", (c["name"],))
+            existing = cur.fetchone()
+            if existing:
+                if existing.get("base_location") in ("N/A", "") and c.get("base_location") not in ("N/A", ""):
+                    cur.execute(
+                        "UPDATE CONSTRUCTORS SET base_location = %s WHERE constructor_id = %s",
+                        (c["base_location"], existing["constructor_id"])
+                    )
                 skipped += 1
                 continue
             cur.execute(
@@ -1737,10 +2098,11 @@ def import_constructors(season):
 
         conn.commit()
         return jsonify({
-            "message": f"Import complete for {season} season",
+            "message": f"Import complete for {season} season ({inserted} added, {skipped} already existed in database)",
             "inserted": inserted,
             "skipped": skipped,
             "total_from_api": len(api_constructors),
+            "skipped_reason": "Skipped constructors already exist in your database to prevent duplicate entries."
         })
     except mysql.connector.IntegrityError as e:
         safe_rollback(conn)
@@ -1770,8 +2132,15 @@ def import_circuits(season):
         skipped = 0
 
         for c in api_circuits:
-            cur.execute("SELECT circuit_id FROM CIRCUITS WHERE name = %s", (c["name"],))
-            if cur.fetchone():
+            cur.execute("SELECT circuit_id, country, city FROM CIRCUITS WHERE name = %s", (c["name"],))
+            existing = cur.fetchone()
+            if existing:
+                # Update location if it was Unknown and new data provides country/city
+                if existing.get("country") == "Unknown" and c["country"] != "Unknown":
+                    cur.execute(
+                        "UPDATE CIRCUITS SET country = %s, city = %s WHERE circuit_id = %s",
+                        (c["country"], c["city"], existing["circuit_id"])
+                    )
                 skipped += 1
                 continue
             cur.execute(
@@ -1782,10 +2151,11 @@ def import_circuits(season):
 
         conn.commit()
         return jsonify({
-            "message": f"Import complete for {season} season",
+            "message": f"Import complete for {season} season ({inserted} added, {skipped} already existed in database)",
             "inserted": inserted,
             "skipped": skipped,
             "total_from_api": len(api_circuits),
+            "skipped_reason": "Skipped circuits already exist in your database (details were updated if previously missing)."
         })
     except mysql.connector.IntegrityError as e:
         safe_rollback(conn)
@@ -1799,7 +2169,6 @@ def import_circuits(season):
 def import_races(season):
     """Fetch race schedule from Jolpica API and insert new races.
     Circuits are created automatically if they don't exist.
-    Note: total_laps is set to 0 (use /api/import/results to update it).
     """
     try:
         from services.jolpica_client import fetch_races
@@ -1817,23 +2186,35 @@ def import_races(season):
 
         for r in api_races:
             # Find or create circuit
-            cur.execute("SELECT circuit_id FROM CIRCUITS WHERE name = %s", (r["circuit_name"],))
+            cur.execute("SELECT circuit_id, country, city FROM CIRCUITS WHERE name = %s", (r["circuit_name"],))
             circuit_row = cur.fetchone()
             if circuit_row:
                 circuit_id = circuit_row["circuit_id"]
+                if circuit_row.get("country") == "Unknown" and r.get("circuit_country") != "Unknown":
+                    cur.execute(
+                        "UPDATE CIRCUITS SET country = %s, city = %s WHERE circuit_id = %s",
+                        (r["circuit_country"], r["circuit_city"], circuit_id)
+                    )
             else:
                 cur.execute(
                     "INSERT INTO CIRCUITS (name, country, city, length_km, number_of_turns) VALUES (%s, %s, %s, %s, %s)",
-                    (r["circuit_name"], "Unknown", "Unknown", 0.000, 0)
+                    (r["circuit_name"], r.get("circuit_country", "Unknown"), r.get("circuit_city", "Unknown"), 0.000, 0)
                 )
                 circuit_id = cur.lastrowid
 
-            # Check if race already exists
+            # Check if race already exists by (season, round) or (name, season)
             cur.execute(
-                "SELECT race_id FROM RACES WHERE race_name = %s AND season_year = %s",
-                (r["race_name"], r["season_year"])
+                "SELECT race_id FROM RACES WHERE (season_year = %s AND round_number = %s) OR (race_name = %s AND season_year = %s)",
+                (r["season_year"], r["round_number"], r["race_name"], r["season_year"])
             )
-            if cur.fetchone():
+            existing_race = cur.fetchone()
+            if existing_race:
+                # Update total_laps if it was 0 and we now have a value
+                if r["total_laps"] > 0:
+                    cur.execute(
+                        "UPDATE RACES SET total_laps = %s WHERE race_id = %s AND total_laps = 0",
+                        (r["total_laps"], existing_race["race_id"])
+                    )
                 skipped += 1
                 continue
 
@@ -1845,10 +2226,11 @@ def import_races(season):
 
         conn.commit()
         return jsonify({
-            "message": f"Import complete for {season} season",
+            "message": f"Import complete for {season} season ({inserted} added, {skipped} already existed in database)",
             "inserted": inserted,
             "skipped": skipped,
             "total_from_api": len(api_races),
+            "skipped_reason": "Skipped races already exist in your database for this season."
         })
     except mysql.connector.IntegrityError as e:
         safe_rollback(conn)
@@ -1976,11 +2358,12 @@ def import_race_results(season, round_number):
 
         conn.commit()
         return jsonify({
-            "message": f"Import complete for {season} Round {round_number}",
+            "message": f"Import complete for {season} Round {round_number} ({inserted} added, {skipped} already existed in database)",
             "race_id": race_id,
             "inserted": inserted,
             "skipped": skipped,
             "total_from_api": len(api_results),
+            "skipped_reason": "Skipped driver results already exist in your database for this race."
         })
     except mysql.connector.IntegrityError as e:
         safe_rollback(conn)
@@ -2112,6 +2495,51 @@ def get_race_results_by_race(race_id):
         """
         cur.execute(query, (race_id,))
         rows = cur.fetchall()
+
+        if not rows and race:
+            try:
+                from services.jolpica_client import fetch_race_results
+                api_results, total_laps = fetch_race_results(race["season_year"], race["round_number"])
+                if api_results:
+                    if total_laps > 0 and race.get("total_laps", 0) == 0:
+                        cur.execute("UPDATE RACES SET total_laps = %s WHERE race_id = %s", (total_laps, race_id))
+                    for res in api_results:
+                        cur.execute(
+                            "SELECT driver_id FROM DRIVERS WHERE LOWER(first_name) = LOWER(%s) AND LOWER(last_name) = LOWER(%s)",
+                            (res["driver_first_name"], res["driver_last_name"])
+                        )
+                        d_row = cur.fetchone()
+                        if d_row:
+                            did = d_row["driver_id"]
+                        else:
+                            cur.execute(
+                                "INSERT INTO DRIVERS (first_name, last_name, nationality, date_of_birth) VALUES (%s, %s, %s, %s)",
+                                (res["driver_first_name"], res["driver_last_name"], res["driver_nationality"], res["driver_dob"])
+                            )
+                            did = cur.lastrowid
+
+                        cur.execute("SELECT constructor_id FROM CONSTRUCTORS WHERE LOWER(name) = LOWER(%s)", (res["constructor_name"],))
+                        c_row = cur.fetchone()
+                        if c_row:
+                            cid = c_row["constructor_id"]
+                        else:
+                            cur.execute(
+                                "INSERT INTO CONSTRUCTORS (name, nationality, base_location) VALUES (%s, %s, %s)",
+                                (res["constructor_name"], res["constructor_nationality"], "N/A")
+                            )
+                            cid = cur.lastrowid
+
+                        cur.execute("""
+                            INSERT INTO RACE_RESULTS (race_id, driver_id, constructor_id, grid_position, finishing_position, points_scored, status, fastest_lap_time)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE finishing_position=VALUES(finishing_position), points_scored=VALUES(points_scored), status=VALUES(status)
+                        """, (race_id, did, cid, res["grid_position"], res["finishing_position"], res["points_scored"], res["status"], res["fastest_lap_time"]))
+                    conn.commit()
+                    cur.execute(query, (race_id,))
+                    rows = cur.fetchall()
+            except Exception:
+                pass
+
         return jsonify({
             "race": serialize_row(race),
             "classification": serialize_rows(rows)
@@ -2266,30 +2694,64 @@ def get_driver_standings(season):
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        query = """
+
+        query_ds = """
             SELECT 
-                r.season_year,
-                d.driver_id,
+                ds.season_year,
+                ds.position,
+                ds.driver_id,
                 CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
-                c.name AS team_name,
-                SUM(rr.points_scored) AS total_points,
-                COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
-                COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums
-            FROM RACE_RESULTS rr
-            JOIN RACES r ON rr.race_id = r.race_id
-            JOIN DRIVERS d ON rr.driver_id = d.driver_id
-            JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id
-            WHERE r.season_year = %s
-            GROUP BY r.season_year, d.driver_id, d.first_name, d.last_name, c.name
-            ORDER BY total_points DESC, wins DESC
+                COALESCE(
+                    ds.team_name,
+                    (SELECT c.name FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE r.season_year = ds.season_year AND rr.driver_id = ds.driver_id ORDER BY r.round_number DESC LIMIT 1),
+                    'F1 Team'
+                ) AS team_name,
+                ds.points AS total_points,
+                ds.wins,
+                ds.podiums
+            FROM DRIVER_STANDINGS ds
+            JOIN DRIVERS d ON ds.driver_id = d.driver_id
+            WHERE ds.season_year = %s
+            ORDER BY ds.position ASC
         """
-        cur.execute(query, (season,))
+        cur.execute(query_ds, (season,))
         rows = cur.fetchall()
-        standings = []
-        for idx, row in enumerate(rows, start=1):
-            serialized = serialize_row(row)
-            serialized["position"] = idx
-            standings.append(serialized)
+
+        if not rows:
+            try:
+                synced = sync_season_standings_helper(season, cur, conn)
+                if synced:
+                    cur.execute(query_ds, (season,))
+                    rows = cur.fetchall()
+            except Exception:
+                pass
+
+        if not rows:
+            fallback_query = """
+                SELECT 
+                    r.season_year,
+                    d.driver_id,
+                    CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
+                    c.name AS team_name,
+                    SUM(rr.points_scored) AS total_points,
+                    COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
+                    COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums
+                FROM RACE_RESULTS rr
+                JOIN RACES r ON rr.race_id = r.race_id
+                JOIN DRIVERS d ON rr.driver_id = d.driver_id
+                JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id
+                WHERE r.season_year = %s
+                GROUP BY r.season_year, d.driver_id, d.first_name, d.last_name, c.name
+                ORDER BY total_points DESC, wins DESC
+            """
+            cur.execute(fallback_query, (season,))
+            raw_rows = cur.fetchall()
+            rows = []
+            for idx, r in enumerate(raw_rows, start=1):
+                r["position"] = idx
+                rows.append(r)
+
+        standings = [serialize_row(row) for row in rows]
         return jsonify(standings)
     except Exception as e:
         safe_rollback(conn)
@@ -2306,29 +2768,188 @@ def get_constructor_standings(season):
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        query = """
+
+        query_cs = """
             SELECT 
-                r.season_year,
-                c.constructor_id,
+                cs.season_year,
+                cs.position,
+                cs.constructor_id,
                 c.name AS team_name,
-                SUM(rr.points_scored) AS total_points,
-                COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
-                COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums
-            FROM RACE_RESULTS rr
-            JOIN RACES r ON rr.race_id = r.race_id
-            JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id
-            WHERE r.season_year = %s
-            GROUP BY r.season_year, c.constructor_id, c.name
-            ORDER BY total_points DESC, wins DESC
+                cs.points AS total_points,
+                cs.wins,
+                cs.podiums
+            FROM CONSTRUCTOR_STANDINGS cs
+            JOIN CONSTRUCTORS c ON cs.constructor_id = c.constructor_id
+            WHERE cs.season_year = %s
+            ORDER BY cs.position ASC
         """
-        cur.execute(query, (season,))
+        cur.execute(query_cs, (season,))
         rows = cur.fetchall()
-        standings = []
-        for idx, row in enumerate(rows, start=1):
-            serialized = serialize_row(row)
-            serialized["position"] = idx
-            standings.append(serialized)
+
+        if not rows:
+            try:
+                synced = sync_season_standings_helper(season, cur, conn)
+                if synced:
+                    cur.execute(query_cs, (season,))
+                    rows = cur.fetchall()
+            except Exception:
+                pass
+
+        if not rows:
+            fallback_query = """
+                SELECT 
+                    r.season_year,
+                    c.constructor_id,
+                    c.name AS team_name,
+                    SUM(rr.points_scored) AS total_points,
+                    COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
+                    COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums
+                FROM RACE_RESULTS rr
+                JOIN RACES r ON rr.race_id = r.race_id
+                JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id
+                WHERE r.season_year = %s
+                GROUP BY r.season_year, c.constructor_id, c.name
+                ORDER BY total_points DESC, wins DESC
+            """
+            cur.execute(fallback_query, (season,))
+            raw_rows = cur.fetchall()
+            rows = []
+            for idx, r in enumerate(raw_rows, start=1):
+                r["position"] = idx
+                rows.append(r)
+
+        standings = [serialize_row(row) for row in rows]
         return jsonify(standings)
+    except Exception as e:
+        safe_rollback(conn)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        safe_close(cur, conn)
+
+
+@app.route("/api/standings/sync/<int:season>", methods=["POST"])
+def sync_standings(season):
+    """Sync official driver and constructor championship standings from Jolpica Ergast API."""
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        synced = sync_season_standings_helper(season, cur, conn)
+        if not synced:
+            return jsonify({"error": f"No official standings found from Jolpica API for season {season}"}), 404
+        return jsonify({
+            "message": f"Official championship standings synced successfully for season {season}",
+            "season_year": season
+        })
+    except Exception as e:
+        safe_rollback(conn)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        safe_close(cur, conn)
+
+
+@app.route("/api/import/results-season/<int:season>", methods=["POST"])
+def import_season_results(season):
+    """Fetch and import all race results for an entire season from Jolpica API."""
+    try:
+        from services.jolpica_client import fetch_all_season_race_results
+        season_races = fetch_all_season_race_results(season)
+        if not season_races:
+            return jsonify({"error": f"No race results available for {season} season"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch from Jolpica API: {str(e)}"}), 502
+
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute("SELECT race_id, round_number FROM RACES WHERE season_year = %s", (season,))
+        race_map = {r["round_number"]: r["race_id"] for r in cur.fetchall()}
+
+        cur.execute("SELECT driver_id, first_name, last_name FROM DRIVERS")
+        driver_map = {(d["first_name"].strip().lower(), d["last_name"].strip().lower()): d["driver_id"] for d in cur.fetchall()}
+
+        cur.execute("SELECT constructor_id, name FROM CONSTRUCTORS")
+        constructor_map = {c["name"].strip().lower(): c["constructor_id"] for c in cur.fetchall()}
+
+        inserted = 0
+        skipped = 0
+
+        for rnd, r_info in season_races.items():
+            race_id = race_map.get(rnd)
+            if not race_id:
+                cur.execute("SELECT circuit_id FROM CIRCUITS WHERE name = %s", (r_info["circuit_name"],))
+                c_row = cur.fetchone()
+                if c_row:
+                    circuit_id = c_row["circuit_id"]
+                else:
+                    cur.execute(
+                        "INSERT INTO CIRCUITS (name, country, city, length_km, number_of_turns) VALUES (%s, %s, %s, %s, %s)",
+                        (r_info["circuit_name"], r_info.get("circuit_country", "Unknown"), r_info.get("circuit_city", "Unknown"), 0.0, 0)
+                    )
+                    circuit_id = cur.lastrowid
+
+                cur.execute(
+                    "INSERT INTO RACES (circuit_id, season_year, race_name, race_date, total_laps, round_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (circuit_id, season, r_info["race_name"], r_info["race_date"], r_info["total_laps"], rnd)
+                )
+                race_id = cur.lastrowid
+                race_map[rnd] = race_id
+
+            for res in r_info["results"]:
+                first_name = res["driver_first_name"]
+                last_name = res["driver_last_name"]
+                dkey = (first_name.strip().lower(), last_name.strip().lower())
+                did = driver_map.get(dkey)
+                if not did:
+                    cur.execute(
+                        "INSERT INTO DRIVERS (first_name, last_name, nationality, date_of_birth) VALUES (%s, %s, %s, %s)",
+                        (first_name, last_name, res["driver_nationality"], res["driver_dob"])
+                    )
+                    did = cur.lastrowid
+                    driver_map[dkey] = did
+                    cur.execute("INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year) VALUES (%s, %s)", (did, season))
+
+                cname = res["constructor_name"]
+                cid = constructor_map.get(cname.strip().lower())
+                if not cid:
+                    cur.execute(
+                        "INSERT INTO CONSTRUCTORS (name, nationality, base_location) VALUES (%s, %s, %s)",
+                        (cname, res.get("constructor_nationality", "Unknown"), "N/A")
+                    )
+                    cid = cur.lastrowid
+                    constructor_map[cname.strip().lower()] = cid
+
+                cur.execute(
+                    "SELECT result_id FROM RACE_RESULTS WHERE race_id = %s AND driver_id = %s",
+                    (race_id, did)
+                )
+                if cur.fetchone():
+                    skipped += 1
+                    continue
+
+                cur.execute(
+                    """INSERT INTO RACE_RESULTS
+                    (race_id, driver_id, constructor_id, grid_position, finishing_position, points_scored, status, fastest_lap_time)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (
+                        race_id, did, cid,
+                        res["grid_position"], res["finishing_position"],
+                        res["points_scored"], res["status"], res["fastest_lap_time"]
+                    )
+                )
+                inserted += 1
+
+        conn.commit()
+        return jsonify({
+            "message": f"Successfully imported race results for {season} season ({inserted} added, {skipped} already existed across {len(season_races)} rounds)",
+            "inserted": inserted,
+            "skipped": skipped,
+            "total_rounds": len(season_races)
+        })
     except Exception as e:
         safe_rollback(conn)
         return jsonify({"error": str(e)}), 500
@@ -2364,9 +2985,15 @@ def import_laps(season, round_number):
         compound_map = {row["name"]: row["compound_id"] for row in cur.fetchall()}
         default_compound_id = compound_map.get("medium") or (list(compound_map.values())[0] if compound_map else 1)
 
-        # 3. Get drivers mapping for this race
+        # 3. Get drivers mapping for this race with normalization
+        import unicodedata
+        def _norm_str(s):
+            if not s:
+                return ""
+            return "".join(c for c in unicodedata.normalize("NFD", str(s).lower()) if unicodedata.category(c) != "Mn")
+
         cur.execute(
-            """SELECT d.driver_id, LOWER(d.first_name) AS first_name, LOWER(d.last_name) AS last_name,
+            """SELECT d.driver_id, d.first_name, d.last_name,
                       dc.car_number
                FROM DRIVERS d
                LEFT JOIN DRIVER_CONTRACTS dc ON d.driver_id = dc.driver_id AND dc.season_year = %s""",
@@ -2376,8 +3003,11 @@ def import_laps(season, round_number):
         car_num_to_driver = {r["car_number"]: r["driver_id"] for r in driver_rows if r.get("car_number")}
         name_to_driver = {}
         for r in driver_rows:
-            name_to_driver[r["last_name"]] = r["driver_id"]
-            name_to_driver[f"{r['first_name']}_{r['last_name']}"] = r["driver_id"]
+            f_norm = _norm_str(r["first_name"])
+            l_norm = _norm_str(r["last_name"])
+            name_to_driver[l_norm] = r["driver_id"]
+            name_to_driver[f"{f_norm}_{l_norm}"] = r["driver_id"]
+            name_to_driver[f"{f_norm}{l_norm}"] = r["driver_id"]
 
         inserted = 0
         skipped = 0
@@ -2443,7 +3073,7 @@ def import_laps(season, round_number):
             jolpica_laps = fetch_jolpica_laps(season, round_number)
             total_api = len(jolpica_laps)
             for l in jolpica_laps:
-                ref = l["driver_ref"].lower()
+                ref = _norm_str(l["driver_ref"])
                 d_id = name_to_driver.get(ref)
                 if not d_id:
                     for k, v in name_to_driver.items():
@@ -2474,11 +3104,12 @@ def import_laps(season, round_number):
 
         conn.commit()
         return jsonify({
-            "message": f"Lap times imported successfully for {season} Round {round_number}",
+            "message": f"Lap times imported successfully for {season} Round {round_number} ({inserted} added, {skipped} already existed or skipped)",
             "race_id": race_id,
             "inserted": inserted,
             "skipped": skipped,
             "total_from_api": total_api,
+            "skipped_reason": "Skipped laps already exist in your database or refer to unmatched drivers."
         }), 201
     except mysql.connector.IntegrityError as e:
         safe_rollback(conn)
@@ -2515,12 +3146,21 @@ def import_pit_stops(season, round_number):
         med_id = compound_map.get("medium") or 2
         hard_id = compound_map.get("hard") or 3
 
-        # 3. Get driver map
-        cur.execute("SELECT driver_id, LOWER(first_name) AS first_name, LOWER(last_name) AS last_name FROM DRIVERS")
+        # 3. Get driver map with normalization
+        import unicodedata
+        def _norm_str(s):
+            if not s:
+                return ""
+            return "".join(c for c in unicodedata.normalize("NFD", str(s).lower()) if unicodedata.category(c) != "Mn")
+
+        cur.execute("SELECT driver_id, first_name, last_name FROM DRIVERS")
         name_to_driver = {}
         for r in cur.fetchall():
-            name_to_driver[r["last_name"]] = r["driver_id"]
-            name_to_driver[f"{r['first_name']}_{r['last_name']}"] = r["driver_id"]
+            f_norm = _norm_str(r["first_name"])
+            l_norm = _norm_str(r["last_name"])
+            name_to_driver[l_norm] = r["driver_id"]
+            name_to_driver[f"{f_norm}_{l_norm}"] = r["driver_id"]
+            name_to_driver[f"{f_norm}{l_norm}"] = r["driver_id"]
 
         from services.jolpica_client import fetch_pit_stops as fetch_jolpica_pit_stops
         api_pit_stops = fetch_jolpica_pit_stops(season, round_number)
@@ -2529,7 +3169,7 @@ def import_pit_stops(season, round_number):
         skipped = 0
 
         for p in api_pit_stops:
-            ref = p["driver_ref"].lower()
+            ref = _norm_str(p["driver_ref"])
             d_id = name_to_driver.get(ref)
             if not d_id:
                 for k, v in name_to_driver.items():
@@ -2563,11 +3203,12 @@ def import_pit_stops(season, round_number):
 
         conn.commit()
         return jsonify({
-            "message": f"Pit stops imported successfully for {season} Round {round_number}",
+            "message": f"Pit stops imported successfully for {season} Round {round_number} ({inserted} added, {skipped} already existed or skipped)",
             "race_id": race_id,
             "inserted": inserted,
             "skipped": skipped,
             "total_from_api": len(api_pit_stops),
+            "skipped_reason": "Skipped pit stops already exist in your database or refer to unmatched drivers."
         }), 201
     except mysql.connector.IntegrityError as e:
         safe_rollback(conn)
@@ -2686,8 +3327,16 @@ def get_stint_comparison():
 # ==============================================================================
 
 @app.route("/api/standings/recalculate/<int:season>", methods=["POST"])
-def recalculate_standings(season):
+@app.route("/api/db-features/recalculate-standings", methods=["POST"])
+def recalculate_standings(season=None):
     """Execute stored procedure sp_recalculate_standings to refresh materialized standings."""
+    if season is None:
+        try:
+            req_data = request.get_json(silent=True) or {}
+            season = int(req_data.get("season") or request.args.get("season") or 2026)
+        except Exception:
+            season = 2026
+
     conn = None
     cur = None
     try:
@@ -2927,8 +3576,168 @@ def get_all_strategy_notes_audit():
 
 
 # ==============================================================================
+# PIT WALL TELEMETRY STREAM & INSIGHTS ENDPOINTS (f1-race-replay Integration)
+# ==============================================================================
+
+@app.route("/api/pitwall/catalog")
+def pitwall_catalog():
+    """Return available races and drivers for any season (1950–2026) for Pit Wall lookup."""
+    try:
+        season = request.args.get("season", default=2024, type=int)
+        if season < 1950 or season > 2030:
+            return jsonify({"error": "Season year must be between 1950 and 2030"}), 400
+        from services.pitwall_service import get_pitwall_catalog
+        data = get_pitwall_catalog(season=season, db_conn_fn=get_db_connection)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pitwall/session")
+def pitwall_session():
+    """
+    Return the full Pit Wall Telemetry & Insights bundle for any season, race, and driver:
+      1. Driver Live Telemetry (speed, gear, throttle, brake, drs, dist, rel_dist, tyre, x, y)
+      2. Live Tyre Strategy (Gantt stint bars & pit stops per driver)
+      3. Lap Time & Gap Evolution Chart + Bayesian State-Space Tyre Degradation Model
+      4. Sector Times (S1/S2/S3 with Purple session-best & Green personal-best classification)
+      5. Track Position Map (2D circuit center/inner/outer polylines + DRS zones + Safety Car)
+      6. FIA Race Control Feed (flags, Safety Car/VSC, DRS, penalties)
+    """
+    try:
+        season = request.args.get("season", default=2024, type=int)
+        round_num = request.args.get("round", default=1, type=int)
+        race_id = request.args.get("race_id", default=None, type=int)
+        driver = request.args.get("driver", default=None, type=str)
+        compare_driver = request.args.get("compare_driver", default=None, type=str)
+        lap = request.args.get("lap", default=1, type=int)
+
+        from services.pitwall_service import get_pitwall_session
+        data = get_pitwall_session(
+            season=season,
+            round_number=round_num,
+            race_id=race_id,
+            driver_code=driver,
+            compare_driver_code=compare_driver,
+            lap=lap,
+            db_conn_fn=get_db_connection,
+        )
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pitwall/telemetry")
+def pitwall_telemetry():
+    """Fast endpoint for switching laps, scrubbing replay frames, or changing drivers."""
+    try:
+        season = request.args.get("season", default=2024, type=int)
+        round_num = request.args.get("round", default=1, type=int)
+        race_id = request.args.get("race_id", default=None, type=int)
+        driver = request.args.get("driver", default=None, type=str)
+        compare_driver = request.args.get("compare_driver", default=None, type=str)
+        lap = request.args.get("lap", default=1, type=int)
+
+        from services.pitwall_service import get_pitwall_session
+        session_data = get_pitwall_session(
+            season=season,
+            round_number=round_num,
+            race_id=race_id,
+            driver_code=driver,
+            compare_driver_code=compare_driver,
+            lap=lap,
+            db_conn_fn=get_db_connection,
+        )
+        return jsonify({
+            "selected_driver": session_data["selected_driver"],
+            "compare_driver": session_data["compare_driver"],
+            "selected_lap": session_data["selected_lap"],
+            "sector_analysis": session_data["sector_analysis"],
+            "driver_telemetry": session_data["driver_telemetry"],
+            "replay_frames": session_data["replay_frames"],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pitwall/stream")
+def pitwall_stream():
+    """
+    Server-Sent Events (SSE) endpoint streaming frame-by-frame JSON payloads
+    in `f1-race-replay` format (`{"frame": {"drivers": {...}, "safety_car": {...}}}`).
+    """
+    import json
+    import time as _time
+    from flask import Response, stream_with_context
+    from services.pitwall_service import get_pitwall_session
+
+    season = request.args.get("season", default=2024, type=int)
+    round_num = request.args.get("round", default=1, type=int)
+    race_id = request.args.get("race_id", default=None, type=int)
+    driver = request.args.get("driver", default=None, type=str)
+    lap = request.args.get("lap", default=1, type=int)
+    speed_mult = max(0.25, min(8.0, request.args.get("speed", default=1.0, type=float)))
+
+    session_data = get_pitwall_session(
+        season=season,
+        round_number=round_num,
+        race_id=race_id,
+        driver_code=driver,
+        lap=lap,
+        db_conn_fn=get_db_connection,
+    )
+    frames = session_data.get("replay_frames", [])
+
+    def generate():
+        delay = max(0.03, 0.12 / speed_mult)
+        for frame_obj in frames:
+            yield f"data: {json.dumps(frame_obj)}\n\n"
+            _time.sleep(delay)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.route("/api/replay/session")
+def track_replay_session():
+    """
+    2D Track Replay & Interactive Controls endpoint (src/interfaces/race_replay.py,
+    qualifying.py, practice.py):
+      - Renders circuit geometry from GPS telemetry (x, y) with DRS zones and sector markers (SF, S1, S2).
+      - Animates all 20 cars across Race, Sprint, Qualifying (Q1/Q2/Q3), and Practice (FP1/FP2/FP3).
+      - Live Leaderboard (positions, Leader/Interval gaps, tyre compound icons + health, PIT/OUT status).
+      - Weather HUD (Track/Air temp, Humidity, Wind speed + 16-point compass rose, Rain state).
+    """
+    try:
+        season = request.args.get("season", default=2024, type=int)
+        round_num = request.args.get("round", default=1, type=int)
+        session_type = request.args.get("session_type", default="Race", type=str)
+        segment = request.args.get("segment", default="Q3", type=str)
+
+        from services.pitwall_service import get_track_replay_session
+        data = get_track_replay_session(
+            season=season,
+            round_number=round_num,
+            session_type=session_type,
+            segment=segment,
+            db_conn_fn=get_db_connection,
+        )
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==============================================================================
 # Main
 # ==============================================================================
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True)
+
+

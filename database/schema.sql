@@ -321,6 +321,7 @@ CREATE TABLE IF NOT EXISTS DRIVER_STANDINGS (
     points DECIMAL(6,2) NOT NULL,
     wins INT NOT NULL DEFAULT 0,
     podiums INT NOT NULL DEFAULT 0,
+    team_name VARCHAR(100) DEFAULT NULL,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE (season_year, driver_id),
     FOREIGN KEY (driver_id) REFERENCES DRIVERS(driver_id)
@@ -568,19 +569,28 @@ CREATE PROCEDURE sp_recalculate_standings(IN p_season_year INT)
 BEGIN
     DELETE FROM DRIVER_STANDINGS WHERE season_year = p_season_year;
 
-    INSERT INTO DRIVER_STANDINGS (season_year, driver_id, position, points, wins, podiums)
+    INSERT INTO DRIVER_STANDINGS (season_year, driver_id, position, points, wins, podiums, team_name)
     SELECT 
         p_season_year,
-        d.driver_id,
-        ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(rr.points_scored), 0) DESC, COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) DESC) AS position,
-        COALESCE(SUM(rr.points_scored), 0) AS points,
-        COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
-        COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums
-    FROM DRIVERS d
-    JOIN RACE_RESULTS rr ON d.driver_id = rr.driver_id
-    JOIN RACES r ON rr.race_id = r.race_id
-    WHERE r.season_year = p_season_year
-    GROUP BY d.driver_id;
+        sub.driver_id,
+        ROW_NUMBER() OVER (ORDER BY sub.points DESC, sub.wins DESC) AS position,
+        sub.points,
+        sub.wins,
+        sub.podiums,
+        sub.team_name
+    FROM (
+        SELECT 
+            d.driver_id,
+            COALESCE(SUM(rr.points_scored), 0) AS points,
+            COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
+            COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums,
+            (SELECT c2.name FROM RACE_RESULTS rr2 JOIN RACES r2 ON rr2.race_id = r2.race_id JOIN CONSTRUCTORS c2 ON rr2.constructor_id = c2.constructor_id WHERE r2.season_year = p_season_year AND rr2.driver_id = d.driver_id ORDER BY r2.round_number DESC LIMIT 1) AS team_name
+        FROM DRIVERS d
+        JOIN RACE_RESULTS rr ON d.driver_id = rr.driver_id
+        JOIN RACES r ON rr.race_id = r.race_id
+        WHERE r.season_year = p_season_year
+        GROUP BY d.driver_id
+    ) sub;
 
     DELETE FROM CONSTRUCTOR_STANDINGS WHERE season_year = p_season_year;
 
@@ -603,6 +613,7 @@ BEGIN
         ds.driver_id,
         CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
         d.nationality,
+        ds.team_name,
         ds.points,
         ds.wins,
         ds.podiums,

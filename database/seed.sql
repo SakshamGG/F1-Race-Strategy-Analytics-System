@@ -12,9 +12,26 @@ VALUES
 INSERT INTO CONSTRUCTORS
 (constructor_id, name, nationality, base_location)
 VALUES
-(1, 'Red Bull Racing', 'Austrian', 'Milton Keynes'),
-(2, 'McLaren', 'British', 'Woking'),
-(3, 'Ferrari', 'Italian', 'Maranello');
+(1, 'Red Bull Racing', 'Austrian', 'Milton Keynes, United Kingdom'),
+(2, 'McLaren', 'British', 'Woking, United Kingdom'),
+(3, 'Ferrari', 'Italian', 'Maranello, Italy'),
+(4, 'Mercedes', 'German', 'Brackley, United Kingdom'),
+(5, 'Aston Martin', 'British', 'Silverstone, United Kingdom'),
+(6, 'Alpine F1 Team', 'French', 'Enstone, United Kingdom'),
+(7, 'Williams', 'British', 'Grove, United Kingdom'),
+(8, 'RB F1 Team', 'Italian', 'Faenza, Italy'),
+(9, 'Haas F1 Team', 'American', 'Kannapolis, North Carolina, USA'),
+(10, 'Sauber', 'Swiss', 'Hinwil, Switzerland'),
+(11, 'Audi', 'German', 'Hinwil, Switzerland'),
+(12, 'Cadillac F1 Team', 'American', 'Fishers, Indiana, USA'),
+(13, 'Renault', 'French', 'Enstone, United Kingdom'),
+(14, 'Benetton', 'Italian', 'Enstone, Oxfordshire, United Kingdom'),
+(15, 'Team Lotus', 'British', 'Hethel, Norfolk, United Kingdom'),
+(16, 'Brabham', 'British', 'Chessington, Surrey, United Kingdom'),
+(17, 'Tyrrell', 'British', 'Ockham, Surrey, United Kingdom'),
+(18, 'Jordan', 'Irish', 'Silverstone, United Kingdom'),
+(19, 'Brawn GP', 'British', 'Brackley, United Kingdom'),
+(20, 'BMW Sauber', 'German', 'Hinwil, Switzerland');
 
 INSERT INTO CIRCUITS
 (circuit_id, name, country, city, length_km, number_of_turns)

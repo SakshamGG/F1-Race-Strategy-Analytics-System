@@ -3,14 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>F1 Strategy Database</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
-    <!-- Sidebar Navigation -->
+    <!-- Mobile Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(true)"></div>
+
+    <!-- Sidebar Navigation (Right-Side Collapsible Glass Panel) -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h1 class="sidebar-title">🏎️ F1 Strategy</h1>
+            <div class="sidebar-header-main">
+                <h1 class="sidebar-title">🏎️ F1 Strategy</h1>
+                <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse Navigation" onclick="toggleSidebar(true)">
+                    <span>✕</span>
+                </button>
+            </div>
             <p class="sidebar-subtitle">Race Strategy &amp; Analytics Dashboard</p>
         </div>
         <div class="sidebar-status" id="backendStatus">
@@ -23,8 +37,9 @@
             <li><a href="#" class="nav-item" data-section="constructors">🏗️ Constructors</a></li>
             <li><a href="#" class="nav-item" data-section="races">🏆 Races</a></li>
             <li><a href="#" class="nav-item" data-section="standings">📈 Standings</a></li>
+            <li><a href="#" class="nav-item" data-section="replay">🏎️ 2D Track Replay</a></li>
+            <li><a href="#" class="nav-item" data-section="pitwall">📡 Pit Wall &amp; Telemetry</a></li>
             <li><a href="#" class="nav-item" data-section="analytics">🔬 Strategy Analytics</a></li>
-            <li><a href="#" class="nav-item" data-section="import">📥 Import Data</a></li>
             <li><a href="#" class="nav-item" data-section="notes">📝 Strategy Notes</a></li>
             <li><a href="#" class="nav-item" data-section="dbfeatures">⚙️ Database Features</a></li>
         </ul>
@@ -32,8 +47,38 @@
 
     <!-- Main Content -->
     <main class="main-content" id="mainContent">
+        <!-- Glass Topbar (Enlarged with Integrated Menu Button) -->
+        <header class="glass-topbar">
+            <div class="topbar-branding">
+                <span class="topbar-badge">F1 ANALYTICS</span>
+                <span class="topbar-title">Race Strategy Management System</span>
+            </div>
+            <button class="glass-menu-btn" id="floatingNavBtn" title="Toggle Navigation Menu" onclick="toggleSidebar()">
+                <span class="glass-menu-icon">☰</span>
+                <span class="glass-menu-text">Menu</span>
+            </button>
+        </header>
+
         <!-- Toast Container -->
         <div class="toast-container" id="toastContainer"></div>
+
+        <!-- Shared Seasons Datalist for Unified Season Combobox Inputs -->
+        <datalist id="seasonSuggestionsList">
+            <option value="2026">2026 Season</option>
+            <option value="2025">2025 Season</option>
+            <option value="2024">2024 Season</option>
+            <option value="2023">2023 Season</option>
+            <option value="2022">2022 Season</option>
+            <option value="2021">2021 Season</option>
+            <option value="2020">2020 Season</option>
+            <option value="2012">2012 Season</option>
+            <option value="2008">2008 Season</option>
+            <option value="1998">1998 Season</option>
+            <option value="1988">1988 Season</option>
+            <option value="1976">1976 Season</option>
+            <option value="1950">1950 Season</option>
+            <option value="all">All Historical</option>
+        </datalist>
 
         <!-- ==================== DASHBOARD ==================== -->
         <section class="content-section active" id="section-dashboard">
@@ -78,19 +123,23 @@
                 <div class="demo-flow">
                     <button class="demo-step" onclick="navigateTo('dashboard')">1. Dashboard</button>
                     <span class="demo-arrow">→</span>
-                    <button class="demo-step" onclick="navigateTo('drivers')">2. Drivers (CRUD)</button>
+                    <button class="demo-step" onclick="navigateTo('drivers')">2. Drivers (by Season)</button>
                     <span class="demo-arrow">→</span>
-                    <button class="demo-step" onclick="navigateTo('races')">3. Race Results</button>
+                    <button class="demo-step" onclick="navigateTo('constructors')">3. Constructors (by Season)</button>
                     <span class="demo-arrow">→</span>
-                    <button class="demo-step" onclick="navigateTo('standings')">4. Standings</button>
+                    <button class="demo-step" onclick="navigateTo('races')">4. Races &amp; Results</button>
                     <span class="demo-arrow">→</span>
-                    <button class="demo-step" onclick="navigateTo('import')">5. API Import</button>
+                    <button class="demo-step" onclick="navigateTo('standings')">5. Standings</button>
                     <span class="demo-arrow">→</span>
-                    <button class="demo-step" onclick="navigateTo('analytics')">6. Analytics</button>
+                    <button class="demo-step" onclick="navigateTo('replay')">6. 2D Track Replay</button>
                     <span class="demo-arrow">→</span>
-                    <button class="demo-step" onclick="navigateTo('notes')">7. Strategy Notes</button>
+                    <button class="demo-step" onclick="navigateTo('pitwall')">7. Pit Wall &amp; Telemetry</button>
                     <span class="demo-arrow">→</span>
-                    <button class="demo-step" onclick="navigateTo('dbfeatures')">8. DB Features</button>
+                    <button class="demo-step" onclick="navigateTo('analytics')">8. Analytics</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('notes')">9. Strategy Notes</button>
+                    <span class="demo-arrow">→</span>
+                    <button class="demo-step" onclick="navigateTo('dbfeatures')">10. DB Features</button>
                 </div>
             </div>
         </section>
@@ -98,14 +147,25 @@
         <!-- ==================== DRIVERS ==================== -->
         <section class="content-section" id="section-drivers">
             <div class="section-header">
-                <h2 class="section-title">Drivers</h2>
+                <div>
+                    <h2 class="section-title">Drivers</h2>
+                    <p class="text-muted" id="driversSubtitle">Browse drivers active in the selected season or all historical drivers</p>
+                </div>
                 <button class="btn btn-primary" onclick="showModal('driverModal')">+ Add Driver</button>
+            </div>
+            <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <label for="driversSeasonFilter"><strong>Season / Year:</strong></label>
+                <div class="season-combo-wrapper">
+                    <input type="text" id="driversSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onDriverSeasonChange()" onkeydown="if(event.key==='Enter') onDriverSeasonChange()" autocomplete="off">
+                    <button class="btn btn-secondary btn-sm" onclick="onDriverSeasonChange()" title="Load Season">Load</button>
+                </div>
+                <button class="btn btn-primary" onclick="syncDriversFromApi()" id="btnSyncDrivers" style="margin-left:auto;">🔄 Sync from API</button>
             </div>
             <div class="table-container">
                 <table class="data-table" id="driversTable">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th id="thDriverRank" style="min-width: 70px;">Pos</th>
                             <th>First Name</th>
                             <th>Last Name</th>
                             <th>Nationality</th>
@@ -123,14 +183,25 @@
         <!-- ==================== CONSTRUCTORS ==================== -->
         <section class="content-section" id="section-constructors">
             <div class="section-header">
-                <h2 class="section-title">Constructors</h2>
+                <div>
+                    <h2 class="section-title">Constructors</h2>
+                    <p class="text-muted" id="constructorsSubtitle">Browse teams and factory headquarters across F1 history</p>
+                </div>
                 <button class="btn btn-primary" onclick="showModal('constructorModal')">+ Add Constructor</button>
+            </div>
+            <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <label for="constructorsSeasonFilter"><strong>Season / Year:</strong></label>
+                <div class="season-combo-wrapper">
+                    <input type="text" id="constructorsSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onConstructorSeasonChange()" onkeydown="if(event.key==='Enter') onConstructorSeasonChange()" autocomplete="off">
+                    <button class="btn btn-secondary btn-sm" onclick="onConstructorSeasonChange()" title="Load Season">Load</button>
+                </div>
+                <button class="btn btn-primary" onclick="syncConstructorsFromApi()" id="btnSyncConstructors" style="margin-left:auto;">🔄 Sync from API</button>
             </div>
             <div class="table-container">
                 <table class="data-table" id="constructorsTable">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th id="thConstructorRank" style="min-width: 70px;">Pos</th>
                             <th>Name</th>
                             <th>Nationality</th>
                             <th>Base Location</th>
@@ -146,7 +217,21 @@
 
         <!-- ==================== RACES ==================== -->
         <section class="content-section" id="section-races">
-            <h2 class="section-title">Races</h2>
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Races</h2>
+                    <p class="text-muted" id="racesSubtitle">Browse race calendar and track telemetry by season</p>
+                </div>
+            </div>
+            <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <label for="racesSeasonFilter"><strong>Season / Year:</strong></label>
+                <div class="season-combo-wrapper">
+                    <input type="text" id="racesSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onRaceSeasonChange()" onkeydown="if(event.key==='Enter') onRaceSeasonChange()" autocomplete="off">
+                    <button class="btn btn-secondary btn-sm" onclick="onRaceSeasonChange()" title="Load Season">Load</button>
+                </div>
+                <button class="btn btn-secondary" onclick="syncAllRaceResultsForSeason()" id="btnSyncAllResults" style="margin-left:auto;">📥 Sync All Race Results</button>
+                <button class="btn btn-primary" onclick="syncRacesFromApi()" id="btnSyncRaces">🔄 Sync Schedule from API</button>
+            </div>
             <div class="table-container">
                 <table class="data-table" id="racesTable">
                     <thead>
@@ -165,38 +250,24 @@
                     </tbody>
                 </table>
             </div>
-            <!-- Race Results Panel -->
-            <div class="card mt-2 hidden" id="raceResultsPanel">
-                <div class="section-header">
-                    <h3 id="raceResultsTitle">Race Results</h3>
-                    <button class="btn btn-secondary" onclick="hideElement('raceResultsPanel')">✕ Close</button>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Pos</th>
-                                <th>Driver</th>
-                                <th>Team</th>
-                                <th>Grid</th>
-                                <th>Points</th>
-                                <th>Status</th>
-                                <th>Fastest Lap</th>
-                            </tr>
-                        </thead>
-                        <tbody id="raceResultsBody"></tbody>
-                    </table>
-                </div>
-            </div>
         </section>
 
         <!-- ==================== STANDINGS ==================== -->
         <section class="content-section" id="section-standings">
-            <h2 class="section-title">Championship Standings</h2>
-            <div class="form-inline mb-1">
-                <label>Season Year:</label>
-                <input type="number" id="standingsSeason" value="2024" min="1950" max="2030" class="input-small">
-                <button class="btn btn-primary" onclick="loadStandings()" id="btnLoadStandings">Load Standings</button>
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Championship Standings</h2>
+                    <p class="text-muted" id="standingsSubtitle">Driver and constructor championship standings by season</p>
+                </div>
+            </div>
+            <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <label for="standingsSeasonFilter"><strong>Season / Year:</strong></label>
+                <div class="season-combo-wrapper">
+                    <input type="text" id="standingsSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onStandingsSeasonChange()" onkeydown="if(event.key==='Enter') onStandingsSeasonChange()" autocomplete="off">
+                    <button class="btn btn-primary btn-sm" onclick="loadStandings()" id="btnLoadStandings">Load Standings</button>
+                </div>
+                <button class="btn btn-primary" onclick="syncStandingsFromApi()" id="btnSyncStandings" style="margin-left:auto;">🔄 Sync from Official API</button>
+                <button class="btn btn-secondary" onclick="recalculateStandingsForSeason()" id="btnRecalcStandings">⚙️ Recalculate Standings (Stored Procedure)</button>
             </div>
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchStandingsTab('drivers')">Drivers</button>
@@ -252,8 +323,10 @@
                     <h3>🔴 Tyre Degradation Analysis</h3>
                     <p class="text-muted">Calculate tyre degradation rates per compound</p>
                     <div class="form-group">
-                        <label>Race ID (optional):</label>
-                        <input type="number" id="tyreDegRaceId" placeholder="Leave empty for latest">
+                        <label for="tyreDegRaceId">Grand Prix (optional):</label>
+                        <select id="tyreDegRaceId">
+                            <option value="">-- Latest Race (Default) --</option>
+                        </select>
                     </div>
                     <button class="btn btn-primary" onclick="runTyreDegradation()" id="btnTyreDeg">Run Analysis</button>
                     <div class="result-box hidden" id="tyreDegResult"></div>
@@ -265,12 +338,16 @@
                     <p class="text-muted">Simulate pit stop strategies using stored procedure</p>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Race ID:</label>
-                            <input type="number" id="simRaceId" placeholder="e.g. 1">
+                            <label for="simRaceId">Grand Prix *</label>
+                            <select id="simRaceId" required>
+                                <option value="" disabled selected>-- Select Grand Prix --</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label>Driver ID:</label>
-                            <input type="number" id="simDriverId" placeholder="e.g. 1">
+                            <label for="simDriverId">Driver *</label>
+                            <select id="simDriverId" required>
+                                <option value="" disabled selected>-- Select Driver --</option>
+                            </select>
                         </div>
                     </div>
                     <button class="btn btn-primary" onclick="runStrategySimulation()" id="btnSimStrategy">Run Simulation</button>
@@ -283,22 +360,28 @@
                     <p class="text-muted">Predict position delta for an undercut attempt</p>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Race ID:</label>
-                            <input type="number" id="undercutRaceId" placeholder="e.g. 1">
+                            <label for="undercutRaceId">Grand Prix *</label>
+                            <select id="undercutRaceId" required>
+                                <option value="" disabled selected>-- Select Grand Prix --</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label>Chaser Driver ID:</label>
-                            <input type="number" id="undercutChaserId" placeholder="e.g. 2">
+                            <label for="undercutChaserId">Chaser Driver (Attacking) *</label>
+                            <select id="undercutChaserId" required>
+                                <option value="" disabled selected>-- Select Chaser Driver --</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Leader Driver ID:</label>
-                            <input type="number" id="undercutLeaderId" placeholder="e.g. 1">
+                            <label for="undercutLeaderId">Leader Driver (Defending) *</label>
+                            <select id="undercutLeaderId" required>
+                                <option value="" disabled selected>-- Select Leader Driver --</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label>Pit Lap:</label>
-                            <input type="number" id="undercutPitLap" placeholder="e.g. 20">
+                            <label for="undercutPitLap">Pit In Lap *</label>
+                            <input type="number" id="undercutPitLap" placeholder="e.g. 20" min="1" max="100" value="20" required>
                         </div>
                     </div>
                     <button class="btn btn-primary" onclick="runUndercutSimulation()" id="btnUndercut">Run Simulation</button>
@@ -311,111 +394,26 @@
                     <p class="text-muted">Compare head-to-head driver stint pace</p>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Race ID:</label>
-                            <input type="number" id="stintRaceId" placeholder="e.g. 1">
+                            <label for="stintRaceId">Grand Prix *</label>
+                            <select id="stintRaceId" required>
+                                <option value="" disabled selected>-- Select Grand Prix --</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label>Driver 1 ID:</label>
-                            <input type="number" id="stintDriver1Id" placeholder="e.g. 1">
+                            <label for="stintDriver1Id">Driver 1 *</label>
+                            <select id="stintDriver1Id" required>
+                                <option value="" disabled selected>-- Select Driver 1 --</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Driver 2 ID:</label>
-                        <input type="number" id="stintDriver2Id" placeholder="e.g. 2">
+                        <label for="stintDriver2Id">Driver 2 (Comparison) *</label>
+                        <select id="stintDriver2Id" required>
+                            <option value="" disabled selected>-- Select Driver 2 --</option>
+                        </select>
                     </div>
                     <button class="btn btn-primary" onclick="runStintComparison()" id="btnStint">Run Comparison</button>
                     <div class="result-box hidden" id="stintResult"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ==================== IMPORT DATA ==================== -->
-        <section class="content-section" id="section-import">
-            <h2 class="section-title">Import Data from External APIs</h2>
-            <p class="text-muted mb-1">Import real F1 data from the Jolpica F1 API and OpenF1 API into the database.</p>
-            <div class="cards-grid">
-                <!-- Import Drivers -->
-                <div class="card">
-                    <h3>🏁 Import Drivers</h3>
-                    <p class="text-muted">Fetch drivers from Jolpica API</p>
-                    <div class="form-group">
-                        <label>Season:</label>
-                        <input type="number" id="importDriversSeason" value="2024" min="1950" max="2030">
-                    </div>
-                    <button class="btn btn-primary" onclick="importData('drivers')" id="btnImportDrivers">Import Drivers</button>
-                    <div class="result-box hidden" id="importDriversResult"></div>
-                </div>
-
-                <!-- Import Constructors -->
-                <div class="card">
-                    <h3>🏗️ Import Constructors</h3>
-                    <p class="text-muted">Fetch constructors from Jolpica API</p>
-                    <div class="form-group">
-                        <label>Season:</label>
-                        <input type="number" id="importConstructorsSeason" value="2024" min="1950" max="2030">
-                    </div>
-                    <button class="btn btn-primary" onclick="importData('constructors')" id="btnImportConstructors">Import Constructors</button>
-                    <div class="result-box hidden" id="importConstructorsResult"></div>
-                </div>
-
-                <!-- Import Circuits -->
-                <div class="card">
-                    <h3>🛣️ Import Circuits</h3>
-                    <p class="text-muted">Fetch circuits from Jolpica API</p>
-                    <div class="form-group">
-                        <label>Season:</label>
-                        <input type="number" id="importCircuitsSeason" value="2024" min="1950" max="2030">
-                    </div>
-                    <button class="btn btn-primary" onclick="importData('circuits')" id="btnImportCircuits">Import Circuits</button>
-                    <div class="result-box hidden" id="importCircuitsResult"></div>
-                </div>
-
-                <!-- Import Races -->
-                <div class="card">
-                    <h3>🏆 Import Races</h3>
-                    <p class="text-muted">Fetch race schedule from Jolpica API</p>
-                    <div class="form-group">
-                        <label>Season:</label>
-                        <input type="number" id="importRacesSeason" value="2024" min="1950" max="2030">
-                    </div>
-                    <button class="btn btn-primary" onclick="importData('races')" id="btnImportRaces">Import Races</button>
-                    <div class="result-box hidden" id="importRacesResult"></div>
-                </div>
-
-                <!-- Import Results -->
-                <div class="card">
-                    <h3>🏅 Import Race Results</h3>
-                    <p class="text-muted">Fetch results for a specific race round</p>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Season:</label>
-                            <input type="number" id="importResultsSeason" value="2024" min="1950" max="2030">
-                        </div>
-                        <div class="form-group">
-                            <label>Round:</label>
-                            <input type="number" id="importResultsRound" value="1" min="1" max="24">
-                        </div>
-                    </div>
-                    <button class="btn btn-primary" onclick="importResults()" id="btnImportResults">Import Results</button>
-                    <div class="result-box hidden" id="importResultsResult"></div>
-                </div>
-
-                <!-- Import Laps -->
-                <div class="card">
-                    <h3>⏱️ Import Lap Times</h3>
-                    <p class="text-muted">Fetch lap telemetry from OpenF1 / Jolpica</p>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Season:</label>
-                            <input type="number" id="importLapsSeason" value="2024" min="1950" max="2030">
-                        </div>
-                        <div class="form-group">
-                            <label>Round:</label>
-                            <input type="number" id="importLapsRound" value="1" min="1" max="24">
-                        </div>
-                    </div>
-                    <button class="btn btn-primary" onclick="importLaps()" id="btnImportLaps">Import Laps</button>
-                    <div class="result-box hidden" id="importLapsResult"></div>
                 </div>
             </div>
         </section>
@@ -518,7 +516,550 @@
                 <div class="card feature-card">
                     <h3>✅ External API Integration</h3>
                     <p>Jolpica F1 API (drivers, constructors, circuits, races, results, laps, pit stops) and OpenF1 API (weather, telemetry).</p>
-                    <button class="btn btn-secondary" onclick="navigateTo('import')">Demo → Import Data</button>
+                    <button class="btn btn-secondary" onclick="navigateTo('races')">Demo → Live Season Filter &amp; API Sync</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== PIT WALL & LIVE TELEMETRY (f1-race-replay Integration) ==================== -->
+        <section class="content-section" id="section-pitwall">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">📡 Pit Wall &amp; Live Telemetry Stream</h2>
+                    <p class="text-muted" id="pitwallSubtitle">
+                        Real-time frame-by-frame telemetry stream &amp; modular Pit Wall Insights for any race, any year (1950–2026), and any driver
+                    </p>
+                </div>
+                <div class="pitwall-header-badges">
+                    <span class="badge badge-info" id="pitwallSourceBadge">Hybrid Pipeline: Ready</span>
+                    <span class="badge badge-warning" id="pitwallWeatherBadge">🌡️ 26.5°C • Dry</span>
+                </div>
+            </div>
+
+            <!-- Universal Lookup Bar: Any Year (1950-2026) • Any Race • Any Driver -->
+            <div class="card pitwall-lookup-card mb-2">
+                <div class="pitwall-lookup-grid">
+                    <div class="pitwall-field">
+                        <label for="pitwallSeasonSelect">Season (1950–2026)</label>
+                        <div class="season-combo-wrapper">
+                            <input type="text" id="pitwallSeasonSelect" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 2024, 1994)" value="2024" onchange="onPitwallSeasonChange()" onkeydown="if(event.key==='Enter') onPitwallSeasonChange()" autocomplete="off">
+                            <button class="btn btn-secondary btn-sm" onclick="onPitwallSeasonChange()" title="Load Season">Go</button>
+                        </div>
+                    </div>
+
+                    <div class="pitwall-field">
+                        <label for="pitwallRaceSelect">Grand Prix / Round</label>
+                        <select id="pitwallRaceSelect" onchange="onPitwallRaceChange()">
+                            <option value="1">Loading calendar...</option>
+                        </select>
+                    </div>
+
+                    <div class="pitwall-field">
+                        <label for="pitwallDriverSelect">Primary Driver (Telemetry Focus)</label>
+                        <div class="pitwall-driver-row">
+                            <select id="pitwallDriverSelect" onchange="onPitwallDriverChange()">
+                                <option value="">Loading drivers...</option>
+                            </select>
+                            <input type="text" id="pitwallDriverQuickFilter" placeholder="Filter driver/code..." oninput="filterPitwallDriverDropdown(this.value)" title="Type any driver name or 3-letter code">
+                        </div>
+                    </div>
+
+                    <div class="pitwall-field">
+                        <label for="pitwallCompareSelect">Compare Driver (Overlay)</label>
+                        <select id="pitwallCompareSelect" onchange="onPitwallDriverChange()">
+                            <option value="none">None (Single Driver)</option>
+                        </select>
+                    </div>
+
+                    <div class="pitwall-field pitwall-field-lap">
+                        <label for="pitwallLapSelect">Active Lap</label>
+                        <div class="pitwall-lap-row">
+                            <select id="pitwallLapSelect" onchange="onPitwallLapChange()">
+                                <option value="1">Lap 1</option>
+                            </select>
+                            <button class="btn btn-primary btn-sm" onclick="reloadPitwallSession()" id="btnPitwallLoad">📡 Load</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modular Pit Wall Insights Menu Launcher (ported from src/gui/insights_menu.py) -->
+                <div class="pitwall-insights-bar">
+                    <span class="pitwall-insights-label">🖥️ Pit Wall Windows:</span>
+                    <button class="pitwall-window-pill active" data-window="all" onclick="setPitwallWindowFilter('all')">All 6 Insights</button>
+                    <button class="pitwall-window-pill" data-window="telemetry" onclick="setPitwallWindowFilter('telemetry')">📈 1. Driver Telemetry</button>
+                    <button class="pitwall-window-pill" data-window="trackmap" onclick="setPitwallWindowFilter('trackmap')">🗺️ 2. Track Position Map</button>
+                    <button class="pitwall-window-pill" data-window="tyres" onclick="setPitwallWindowFilter('tyres')">🛞 3. Live Tyre Strategy</button>
+                    <button class="pitwall-window-pill" data-window="laptimes" onclick="setPitwallWindowFilter('laptimes')">⏱️ 4. Lap Time &amp; Bayesian</button>
+                    <button class="pitwall-window-pill" data-window="sectors" onclick="setPitwallWindowFilter('sectors')">🟣 5. Sector Splits</button>
+                    <button class="pitwall-window-pill" data-window="racecontrol" onclick="setPitwallWindowFilter('racecontrol')">🚩 6. Race Control Feed</button>
+                    <button class="pitwall-window-pill" data-window="stream" onclick="setPitwallWindowFilter('stream')">{ } Raw JSON Stream</button>
+                </div>
+            </div>
+
+            <!-- Interactive Replay Transport & Live Driver Telemetry HUD -->
+            <div class="card pitwall-transport-card mb-2">
+                <div class="pitwall-transport-top">
+                    <div class="pitwall-transport-controls">
+                        <button class="btn btn-primary btn-sm" id="btnPitwallPlay" onclick="togglePitwallPlayback()">▶ Play Stream</button>
+                        <button class="btn btn-secondary btn-sm" onclick="stepPitwallFrame(-1)" title="Step Back 1 Frame (←)">⏮</button>
+                        <button class="btn btn-secondary btn-sm" onclick="stepPitwallFrame(1)" title="Step Forward 1 Frame (→)">⏭</button>
+                        <button class="btn btn-secondary btn-sm" onclick="stepPitwallLap(-1)" title="Previous Lap">◀ Lap</button>
+                        <button class="btn btn-secondary btn-sm" onclick="stepPitwallLap(1)" title="Next Lap">Lap ▶</button>
+                        <button class="btn btn-secondary btn-sm" onclick="restartPitwallLap()" title="Restart Lap (R)">↺</button>
+                        <div class="pitwall-speed-group">
+                            <span class="text-muted">Speed:</span>
+                            <button class="pitwall-speed-btn" data-speed="0.5" onclick="setPitwallSpeed(0.5)">0.5x</button>
+                            <button class="pitwall-speed-btn active" data-speed="1" onclick="setPitwallSpeed(1)">1x</button>
+                            <button class="pitwall-speed-btn" data-speed="2" onclick="setPitwallSpeed(2)">2x</button>
+                            <button class="pitwall-speed-btn" data-speed="4" onclick="setPitwallSpeed(4)">4x</button>
+                        </div>
+                        <label class="pitwall-auto-advance">
+                            <input type="checkbox" id="pitwallAutoAdvanceLap" checked>
+                            <span>Auto-advance Laps</span>
+                        </label>
+                    </div>
+
+                    <div class="pitwall-scrubber-wrap">
+                        <div class="pitwall-scrubber-labels">
+                            <span id="pitwallScrubberLapLabel">Lap 1 / 57</span>
+                            <span id="pitwallScrubberDistLabel">Dist: 0 m (0.0%)</span>
+                            <span id="pitwallScrubberTimeLabel">t = 0.000s</span>
+                        </div>
+                        <input type="range" id="pitwallFrameScrubber" min="0" max="49" value="0" oninput="onPitwallScrubberInput(this.value)">
+                    </div>
+                </div>
+
+                <!-- Live Driver HUD Gauges (Speed, Gear, Throttle, Brake, DRS, Tyre, Safety Car) -->
+                <div class="pitwall-hud-grid">
+                    <div class="pitwall-hud-box">
+                        <span class="hud-label">DRIVER</span>
+                        <div class="hud-value" id="hudDriverCode">VER</div>
+                        <span class="hud-sub" id="hudDriverPos">P1 • +0.000s</span>
+                    </div>
+                    <div class="pitwall-hud-box">
+                        <span class="hud-label">SPEED</span>
+                        <div class="hud-value"><span id="hudSpeed">0</span> <small>km/h</small></div>
+                        <div class="hud-bar"><div class="hud-bar-fill hud-bar-speed" id="hudSpeedBar" style="width:0%"></div></div>
+                    </div>
+                    <div class="pitwall-hud-box">
+                        <span class="hud-label">GEAR &amp; RPM</span>
+                        <div class="hud-value" id="hudGear">N</div>
+                        <span class="hud-sub" id="hudRpm">0 RPM</span>
+                    </div>
+                    <div class="pitwall-hud-box">
+                        <span class="hud-label">THROTTLE</span>
+                        <div class="hud-value"><span id="hudThrottle">0</span><small>%</small></div>
+                        <div class="hud-bar"><div class="hud-bar-fill hud-bar-throttle" id="hudThrottleBar" style="width:0%"></div></div>
+                    </div>
+                    <div class="pitwall-hud-box">
+                        <span class="hud-label">BRAKE</span>
+                        <div class="hud-value"><span id="hudBrake">0</span><small>%</small></div>
+                        <div class="hud-bar"><div class="hud-bar-fill hud-bar-brake" id="hudBrakeBar" style="width:0%"></div></div>
+                    </div>
+                    <div class="pitwall-hud-box">
+                        <span class="hud-label">DRS &amp; TYRE</span>
+                        <div class="hud-badges-row">
+                            <span class="hud-drs-pill off" id="hudDrsBadge">DRS OFF</span>
+                            <span class="hud-tyre-pill" id="hudTyreBadge" style="border-color:#E8002D;color:#E8002D;">S • Soft</span>
+                        </div>
+                        <span class="hud-sub" id="hudCoords">x: 0.0, y: 0.0</span>
+                    </div>
+                    <div class="pitwall-hud-box">
+                        <span class="hud-label">TRACK / SAFETY CAR</span>
+                        <div class="hud-sc-pill clear" id="hudSafetyCarBadge">🟢 TRACK CLEAR</div>
+                        <span class="hud-sub" id="hudSafetyCarPhase">Phase: Nominal</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 6 MODULAR PIT WALL INSIGHT WINDOWS ==================== -->
+            <div class="pitwall-panels-grid" id="pitwallPanelsGrid">
+
+                <!-- WINDOW 1: Driver Live Telemetry (driver_telemetry_window.py) -->
+                <div class="card pitwall-panel" id="pitwallPanel-telemetry" data-pitwall-panel="telemetry">
+                    <div class="pitwall-panel-header">
+                        <div>
+                            <h3>📈 1. Driver Live Telemetry</h3>
+                            <p class="text-muted">Stacked Speed (50%), Gear (25%), and Throttle/Brake (25%) traces</p>
+                        </div>
+                        <div class="pitwall-panel-controls">
+                            <select id="pitwallTelXMode" class="input-small" onchange="renderPitwallTelemetryCanvas()">
+                                <option value="distance" selected>X-Axis: Full Lap Distance (m)</option>
+                                <option value="window30s">X-Axis: Rolling 30s Window</option>
+                            </select>
+                            <label class="pitwall-chk-label">
+                                <input type="checkbox" id="pitwallTelShowCompare" checked onchange="renderPitwallTelemetryCanvas()">
+                                <span>Compare Overlay</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="pitwall-canvas-wrap">
+                        <canvas id="pitwallTelemetryCanvas" width="760" height="390"></canvas>
+                    </div>
+                    <div class="pitwall-telemetry-legend" id="pitwallTelemetryLegend"></div>
+                </div>
+
+                <!-- WINDOW 2: Track Position Map (track_position_window.py) -->
+                <div class="card pitwall-panel" id="pitwallPanel-trackmap" data-pitwall-panel="trackmap">
+                    <div class="pitwall-panel-header">
+                        <div>
+                            <h3>🗺️ 2. Track Position Map &amp; Safety Car</h3>
+                            <p class="text-muted" id="pitwallCircuitSubtitle">2D Real Circuit Geometry with DRS Zones &amp; Simulated Safety Car</p>
+                        </div>
+                        <div class="pitwall-panel-controls">
+                            <select id="pitwallMapMode" class="input-small" onchange="renderPitwallTrackMapCanvas()">
+                                <option value="circuit" selected>View: 2D Real Circuit</option>
+                                <option value="radar">View: Circular Gap Radar</option>
+                            </select>
+                            <select id="pitwallMapLabels" class="input-small" onchange="renderPitwallTrackMapCanvas()">
+                                <option value="all" selected>Labels: All 20 Cars</option>
+                                <option value="focus">Labels: Selected Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="pitwall-map-layout">
+                        <div class="pitwall-canvas-wrap pitwall-map-canvas-wrap">
+                            <canvas id="pitwallTrackMapCanvas" width="520" height="390"></canvas>
+                        </div>
+                        <div class="pitwall-live-tower" id="pitwallLiveTower">
+                            <div class="tower-header">LIVE TIMING TOWER</div>
+                            <div class="tower-list" id="pitwallTowerList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WINDOW 3: Live Tyre Strategy (tyre_strategy_window.py) -->
+                <div class="card pitwall-panel pitwall-panel-wide" id="pitwallPanel-tyres" data-pitwall-panel="tyres">
+                    <div class="pitwall-panel-header">
+                        <div>
+                            <h3>🛞 3. Live Tyre Strategy Timeline (Gantt)</h3>
+                            <p class="text-muted">Horizontal stint progression per driver with official FIA tyre compound colours &amp; pit stop markers (click any driver row to inspect)</p>
+                        </div>
+                        <div class="pitwall-tyre-legend">
+                            <span class="tyre-legend-item"><i style="background:#E8002D"></i> Soft (S)</span>
+                            <span class="tyre-legend-item"><i style="background:#FFF200"></i> Medium (M)</span>
+                            <span class="tyre-legend-item"><i style="background:#CACACA"></i> Hard (H)</span>
+                            <span class="tyre-legend-item"><i style="background:#39B54A"></i> Inter (I)</span>
+                            <span class="tyre-legend-item"><i style="background:#0067FF"></i> Wet (W)</span>
+                        </div>
+                    </div>
+                    <div class="pitwall-gantt-container" id="pitwallTyreGantt"></div>
+                </div>
+
+                <!-- WINDOW 4: Lap Time & Gap Evolution + Bayesian Tyre Model (lap_time_chart_window.py) -->
+                <div class="card pitwall-panel" id="pitwallPanel-laptimes" data-pitwall-panel="laptimes">
+                    <div class="pitwall-panel-header">
+                        <div>
+                            <h3>⏱️ 4. Lap Time Progression &amp; Bayesian Tyre Degradation</h3>
+                            <p class="text-muted">Multi-driver pace, Gap-to-Leader evolution, SC/VSC zones &amp; State-Space Bayesian curve</p>
+                        </div>
+                        <div class="pitwall-panel-controls">
+                            <select id="pitwallLapYMode" class="input-small" onchange="renderPitwallLapChartCanvas()">
+                                <option value="laptime" selected>Y-Axis: Lap Time (s)</option>
+                                <option value="gap">Y-Axis: Gap to Leader (s)</option>
+                            </select>
+                            <label class="pitwall-chk-label">
+                                <input type="checkbox" id="pitwallPurePace" onchange="renderPitwallLapChartCanvas()">
+                                <span>Pure Pace (Hide SC/Pits)</span>
+                            </label>
+                            <label class="pitwall-chk-label">
+                                <input type="checkbox" id="pitwallShowBayesian" checked onchange="renderPitwallLapChartCanvas()">
+                                <span>Bayesian Model</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="pitwall-canvas-wrap">
+                        <canvas id="pitwallLapChartCanvas" width="760" height="340"></canvas>
+                    </div>
+                    <div class="pitwall-bayesian-summary" id="pitwallBayesianSummary"></div>
+                </div>
+
+                <!-- WINDOW 5: Sector Times & Purple/Green Splits (sector_times_window.py & sectors.py) -->
+                <div class="card pitwall-panel" id="pitwallPanel-sectors" data-pitwall-panel="sectors">
+                    <div class="pitwall-panel-header">
+                        <div>
+                            <h3>🟣 5. Sector Times &amp; Theoretical Best Lap</h3>
+                            <p class="text-muted">Progressive S1 / S2 / S3 classification — <span class="sector-pill purple">Purple = Session Best</span> <span class="sector-pill green">Green = Personal Best</span></p>
+                        </div>
+                    </div>
+                    <div class="pitwall-sector-kpis" id="pitwallSectorKpis"></div>
+                    <div class="table-container pitwall-sector-table-wrap">
+                        <table class="data-table pitwall-sector-table">
+                            <thead>
+                                <tr>
+                                    <th>Lap</th>
+                                    <th>Compound</th>
+                                    <th>Lap Time</th>
+                                    <th>Sector 1</th>
+                                    <th>Sector 2</th>
+                                    <th>Sector 3</th>
+                                    <th>Track / Pit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pitwallSectorTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- WINDOW 6: Race Control Feed (race_control_feed_window.py) -->
+                <div class="card pitwall-panel pitwall-panel-wide" id="pitwallPanel-racecontrol" data-pitwall-panel="racecontrol">
+                    <div class="pitwall-panel-header">
+                        <div>
+                            <h3>🚩 6. FIA Race Control Live Feed</h3>
+                            <p class="text-muted">Flags, Safety Car / VSC deployments, DRS activations, track limits &amp; steward notifications</p>
+                        </div>
+                        <div class="pitwall-panel-controls">
+                            <select id="pitwallRcFilter" class="input-small" onchange="renderPitwallRaceControl()">
+                                <option value="all" selected>All Messages</option>
+                                <option value="Flag">Flags Only</option>
+                                <option value="SafetyCar">Safety Car / VSC</option>
+                                <option value="Drs">DRS Status</option>
+                                <option value="Penalty">Stewards / Penalties</option>
+                            </select>
+                            <label class="pitwall-chk-label">
+                                <input type="checkbox" id="pitwallRcSyncLap" onchange="renderPitwallRaceControl()">
+                                <span>Up to Active Lap Only</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="pitwall-rc-feed" id="pitwallRaceControlList"></div>
+                </div>
+
+                <!-- WINDOW 7: Raw Telemetry Stream Inspector (src/services/stream.py) -->
+                <div class="card pitwall-panel pitwall-panel-wide" id="pitwallPanel-stream" data-pitwall-panel="stream">
+                    <div class="pitwall-panel-header">
+                        <div>
+                            <h3>{ } Raw Frame-by-Frame Telemetry Stream Packet (<code>src/services/stream.py</code> format)</h3>
+                            <p class="text-muted">Live JSON frame emitted to Pit Wall clients (<code>speed, gear, throttle, brake, drs, dist, rel_dist, tyre, x, y, safety_car</code>)</p>
+                        </div>
+                        <div class="pitwall-panel-controls">
+                            <button class="btn btn-secondary btn-sm" onclick="copyPitwallStreamPacket()">📋 Copy JSON Frame</button>
+                            <a class="btn btn-secondary btn-sm" id="pitwallSseLink" href="/api/pitwall/stream?season=2024&round=1&lap=1" target="_blank">🔗 Open Raw SSE Stream</a>
+                        </div>
+                    </div>
+                    <pre class="pitwall-stream-pre" id="pitwallRawStreamPre">{ "status": "Waiting for telemetry frame..." }</pre>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==================== 2D TRACK REPLAY & INTERACTIVE CONTROLS (race_replay.py, qualifying.py, practice.py) ==================== -->
+        <section class="content-section" id="section-replay">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">🏎️ 2D Track Replay &amp; Interactive Controls</h2>
+                    <p class="text-muted" id="replaySubtitle">
+                        Real-time 20-car GPS circuit animation with DRS zones, Sector 1/2/3 markers, Live Leaderboard (Gaps, Tyre Health, PIT/OUT), Weather HUD, and Qualifying/Practice modes
+                    </p>
+                </div>
+                <div class="pitwall-header-badges">
+                    <button class="btn btn-secondary btn-sm" onclick="openPitwallFromReplay()">📡 Open in Pit Wall Insights</button>
+                    <button class="btn btn-secondary btn-sm" onclick="toggleReplayControlsHelp()">⌨️ Controls Help (H)</button>
+                </div>
+            </div>
+
+            <!-- Session Selector & Display Toggles Bar -->
+            <div class="card replay-toolbar-card mb-2">
+                <div class="replay-toolbar-grid">
+                    <div class="pitwall-field">
+                        <label for="replaySeasonSelect">Season (1950–2026)</label>
+                        <div class="season-combo-wrapper">
+                            <input type="text" id="replaySeasonSelect" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 2024, 1994)" value="2024" onchange="onReplaySeasonChange()" onkeydown="if(event.key==='Enter') onReplaySeasonChange()" autocomplete="off">
+                            <button class="btn btn-secondary btn-sm" onclick="onReplaySeasonChange()" title="Load Season">Go</button>
+                        </div>
+                    </div>
+
+                    <div class="pitwall-field">
+                        <label for="replayRaceSelect">Grand Prix / Circuit</label>
+                        <select id="replayRaceSelect" onchange="onReplayRaceChange()">
+                            <option value="1">Loading calendar...</option>
+                        </select>
+                    </div>
+
+                    <div class="pitwall-field">
+                        <label>Session Interface (<code>race_replay.py</code> / <code>qualifying.py</code> / <code>practice.py</code>)</label>
+                        <div class="replay-mode-tabs">
+                            <button class="replay-mode-tab active" data-mode="Race" onclick="setReplaySessionMode('Race')">🏁 Race</button>
+                            <button class="replay-mode-tab" data-mode="Sprint" onclick="setReplaySessionMode('Sprint')">⚡ Sprint</button>
+                            <button class="replay-mode-tab" data-mode="Qualifying" onclick="setReplaySessionMode('Qualifying')">⏱️ Qualifying</button>
+                            <button class="replay-mode-tab" data-mode="FP1" onclick="setReplaySessionMode('FP1')">🔧 FP1</button>
+                            <button class="replay-mode-tab" data-mode="FP2" onclick="setReplaySessionMode('FP2')">🔧 FP2</button>
+                            <button class="replay-mode-tab" data-mode="FP3" onclick="setReplaySessionMode('FP3')">🔧 FP3</button>
+                        </div>
+                    </div>
+
+                    <div class="pitwall-field hidden" id="replayQualiSegmentField">
+                        <label>Qualifying Segment (<code>QualifyingSegmentSelectorComponent</code>)</label>
+                        <div class="replay-mode-tabs">
+                            <button class="replay-seg-tab" data-seg="Q1" onclick="setReplayQualiSegment('Q1')">Q1 (All 20)</button>
+                            <button class="replay-seg-tab" data-seg="Q2" onclick="setReplayQualiSegment('Q2')">Q2 (Top 15)</button>
+                            <button class="replay-seg-tab active" data-seg="Q3" onclick="setReplayQualiSegment('Q3')">Q3 (Top 10 Shootout)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View Toggles & Circuit Rotation -->
+                <div class="replay-toggles-bar">
+                    <button class="pitwall-window-pill active" id="btnReplayToggleDrs" onclick="toggleReplayOption('drs')">🟢 DRS Zones (D)</button>
+                    <button class="pitwall-window-pill active" id="btnReplayToggleSectors" onclick="toggleReplayOption('sectors')">📍 Sector Markers (S)</button>
+                    <button class="pitwall-window-pill active" id="btnReplayToggleLabels" onclick="toggleReplayOption('labels')">🏷️ Driver Labels</button>
+                    <button class="pitwall-window-pill" id="btnReplayToggleChart" onclick="toggleReplayOption('chart')">📈 Split Telemetry Trace (C)</button>
+                    <button class="pitwall-window-pill" id="btnReplayToggleChamp" onclick="toggleReplayOption('championship')">🏆 Live Championship</button>
+                    <button class="pitwall-window-pill active" id="btnReplayToggleHud" onclick="toggleReplayOption('hud')">🖥️ Visible HUD</button>
+
+                    <div class="replay-rotation-control">
+                        <label for="replayRotationSlider">🔄 Circuit Rotation: <span id="replayRotationVal">0°</span></label>
+                        <input type="range" id="replayRotationSlider" min="0" max="360" step="5" value="0" oninput="onReplayRotationChange(this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== MAIN 2D TRACK REPLAY STAGE (Arcade Window Layout) ==================== -->
+            <div class="replay-theater-stage" id="replayTheaterStage">
+
+                <!-- LEFT HUD COLUMN: Session Banner, Weather HUD, Selected Driver Info & Championship Overlays -->
+                <div class="replay-left-hud" id="replayLeftHud">
+                    <!-- Top-Left Lap / Clock / Track Status Banner -->
+                    <div class="replay-banner-box">
+                        <div class="replay-event-title" id="replayBannerEvent">2024 Bahrain Grand Prix</div>
+                        <div class="replay-circuit-sub" id="replayBannerCircuit">Bahrain International Circuit • 5412m</div>
+                        <div class="replay-lap-counter" id="replayLapText">LAP 1 / 57</div>
+                        <div class="replay-clock-text" id="replayClockText">00:00:00</div>
+                        <div class="replay-status-badge green" id="replayTrackStatusBadge">🟢 TRACK CLEAR</div>
+                    </div>
+
+                    <!-- Weather HUD Component (WeatherComponent in src/ui_components.py) -->
+                    <div class="replay-weather-box" id="replayWeatherBox">
+                        <div class="replay-box-title">⛅ WEATHER HUD</div>
+                        <div class="weather-hud-rows">
+                            <div class="weather-hud-row"><span>🌡️ Track Temp</span><strong id="rwTrackTemp">37.5°C</strong></div>
+                            <div class="weather-hud-row"><span>🌤️ Air Temp</span><strong id="rwAirTemp">26.0°C</strong></div>
+                            <div class="weather-hud-row"><span>💧 Humidity</span><strong id="rwHumidity">48%</strong></div>
+                            <div class="weather-hud-row"><span>💨 Wind</span><strong id="rwWind">9.2 km/h NNE</strong></div>
+                            <div class="weather-hud-row"><span>🌧️ Rain</span><strong id="rwRain">DRY (0%)</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Driver Telemetry & Tyre Degradation Info (DriverInfoComponent) -->
+                    <div class="replay-driver-info-box" id="replayDriverInfoBox">
+                        <div class="replay-box-title">
+                            <span>🏎️ DRIVER TELEMETRY</span>
+                            <small class="text-muted">Click / Shift+Click</small>
+                        </div>
+                        <div id="replaySelectedDriverContent"></div>
+                    </div>
+
+                    <!-- Live Championship Standings Overlays (DriversChampionshipOverlay / ConstructorsChampionshipOverlay) -->
+                    <div class="replay-champ-box hidden" id="replayChampBox">
+                        <div class="replay-box-title">
+                            <span>🏆 LIVE CHAMPIONSHIP</span>
+                            <div class="champ-tab-group">
+                                <button class="champ-mini-btn active" id="btnChampDrivers" onclick="setReplayChampTab('drivers')">Drivers</button>
+                                <button class="champ-mini-btn" id="btnChampConstructors" onclick="setReplayChampTab('constructors')">Teams</button>
+                            </div>
+                        </div>
+                        <div class="replay-champ-list" id="replayChampList"></div>
+                    </div>
+                </div>
+
+                <!-- CENTER STAGE: Optional Split Telemetry Trace + 2D GPS Circuit Canvas -->
+                <div class="replay-center-stage">
+                    <!-- Split-Screen Telemetry Chart (Qualifying / Practice / Race Comparison) -->
+                    <div class="replay-split-chart-wrap hidden" id="replaySplitChartWrap">
+                        <div class="replay-split-chart-header">
+                            <span id="replaySplitChartTitle">Flying Lap Telemetry Comparison (Speed 50% • Gear 25% • Pedals 25%)</span>
+                            <div class="replay-split-chart-actions">
+                                <button class="btn btn-secondary btn-sm" onclick="cycleReplayComparisonDriver()">Cycle Compare (C)</button>
+                                <button class="btn btn-secondary btn-sm" onclick="clearReplayComparisonDrivers()">Clear Compare (V)</button>
+                            </div>
+                        </div>
+                        <canvas id="replaySplitTelemetryCanvas" width="760" height="225"></canvas>
+                    </div>
+
+                    <!-- 2D GPS Circuit Canvas -->
+                    <div class="replay-circuit-canvas-wrap" id="replayCircuitCanvasWrap">
+                        <canvas id="trackReplayCanvas" width="820" height="540"></canvas>
+
+                        <!-- Controls Help Popup Overlay (ControlsPopupComponent) -->
+                        <div class="replay-controls-popup hidden" id="replayControlsPopup">
+                            <div class="replay-popup-header">
+                                <strong>⌨️ Interactive Replay Controls</strong>
+                                <button class="modal-close" onclick="toggleReplayControlsHelp(false)">✕</button>
+                            </div>
+                            <div class="replay-popup-body">
+                                <div><kbd>SPACE</kbd> Pause / Resume Replay</div>
+                                <div><kbd>←</kbd> / <kbd>→</kbd> Rewind / Fast-Forward</div>
+                                <div><kbd>↑</kbd> / <kbd>↓</kbd> Playback Speed +/-</div>
+                                <div><kbd>1</kbd>–<kbd>4</kbd> Set Speed (0.5x / 1x / 2x / 4x)</div>
+                                <div><kbd>R</kbd> Restart Session / Lap</div>
+                                <div><kbd>D</kbd> Toggle DRS Zones</div>
+                                <div><kbd>S</kbd> Toggle Sector Markers</div>
+                                <div><kbd>C</kbd> Toggle / Cycle Comparison Telemetry</div>
+                                <div><kbd>V</kbd> Clear Comparison Driver(s)</div>
+                                <div><kbd>Click</kbd> Select Primary Driver on Leaderboard</div>
+                                <div><kbd>Shift+Click</kbd> Add / Remove Comparison Driver</div>
+                                <div><kbd>H</kbd> Toggle This Controls Popup</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT HUD COLUMN: Live Leaderboard (LeaderboardComponent / LapTimeLeaderboardComponent) -->
+                <div class="replay-right-leaderboard" id="replayRightLeaderboard">
+                    <div class="replay-lb-header">
+                        <span class="replay-lb-title" id="replayLeaderboardTitle">LEADERBOARD</span>
+                        <!-- Interval (I) vs Leader (L) radio buttons from LeaderboardComponent -->
+                        <div class="replay-lb-radios" id="replayLbGapRadios">
+                            <button class="lb-radio-btn" id="btnLbIntervalGap" onclick="setReplayGapMode('interval')" title="Show Interval Gaps to Car Ahead (I)">I</button>
+                            <button class="lb-radio-btn active" id="btnLbLeaderGap" onclick="setReplayGapMode('leader')" title="Show Gap to Race Leader (L)">L</button>
+                        </div>
+                    </div>
+                    <div class="replay-lb-sub">Click: Primary • Shift+Click: Compare</div>
+                    <div class="replay-lb-rows" id="replayLeaderboardRows"></div>
+                </div>
+
+            </div>
+
+            <!-- BOTTOM BAR: Scrubbable Progress Bar with Event Markers + Playback Controls -->
+            <div class="card replay-bottom-bar mt-2">
+                <!-- Scrubbable Race Progress Bar with Lap Ticks & Event Markers (RaceProgressBarComponent) -->
+                <div class="replay-progress-container">
+                    <div class="replay-progress-labels">
+                        <span id="replayProgressLeftLabel">Lap 1 / 57 (0.0%)</span>
+                        <div class="replay-event-legend">
+                            <span><i style="background:#FF9100"></i> Safety Car</span>
+                            <span><i style="background:#FFD600"></i> VSC / Yellow</span>
+                            <span><i style="background:#3B82F6"></i> Pit Stop</span>
+                            <span><i style="background:#FF1744"></i> Retired (OUT)</span>
+                        </div>
+                        <span id="replayProgressRightLabel">00:00:00</span>
+                    </div>
+                    <div class="replay-progress-track-wrap">
+                        <div class="replay-progress-events-layer" id="replayProgressEventsLayer"></div>
+                        <input type="range" id="replayProgressScrubber" min="0" max="100" value="0" oninput="onReplayScrubberInput(this.value)">
+                    </div>
+                </div>
+
+                <!-- Interactive Playback Controls (RaceControlsComponent) -->
+                <div class="replay-controls-row">
+                    <div class="replay-transport-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="restartTrackReplay()" title="Restart (R)">↺ Restart</button>
+                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(-10)" title="Rewind (←)">⏪ Rewind</button>
+                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(-1)" title="Step Back 1 Frame">⏮ -1</button>
+                        <button class="btn btn-primary btn-sm" id="btnTrackReplayPlay" onclick="toggleTrackReplayPlayback()">▶ Play Replay</button>
+                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(1)" title="Step Forward 1 Frame">+1 ⏭</button>
+                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(10)" title="Fast-Forward (→)">Fast-Fwd ⏩</button>
+                    </div>
+
+                    <div class="replay-speed-pills">
+                        <span class="text-muted">Playback Speed:</span>
+                        <button class="pitwall-speed-btn" data-rspeed="0.25" onclick="setTrackReplaySpeed(0.25)">0.25x</button>
+                        <button class="pitwall-speed-btn" data-rspeed="0.5" onclick="setTrackReplaySpeed(0.5)">0.5x</button>
+                        <button class="pitwall-speed-btn active" data-rspeed="1" onclick="setTrackReplaySpeed(1)">1x</button>
+                        <button class="pitwall-speed-btn" data-rspeed="2" onclick="setTrackReplaySpeed(2)">2x</button>
+                        <button class="pitwall-speed-btn" data-rspeed="4" onclick="setTrackReplaySpeed(4)">4x</button>
+                        <button class="pitwall-speed-btn" data-rspeed="8" onclick="setTrackReplaySpeed(8)">8x</button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -599,17 +1140,23 @@
                 <input type="hidden" id="noteEditId">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Race ID *</label>
-                        <input type="number" id="noteRaceId" required placeholder="e.g. 1">
+                        <label for="noteRaceId">Grand Prix *</label>
+                        <select id="noteRaceId" required>
+                            <option value="" disabled selected>-- Select Grand Prix --</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label>Analyst ID *</label>
-                        <input type="number" id="noteAnalystId" required placeholder="e.g. 1">
+                        <label for="noteAnalystId">Strategy Analyst *</label>
+                        <select id="noteAnalystId" required>
+                            <option value="" disabled selected>-- Select Analyst --</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Driver ID *</label>
-                    <input type="number" id="noteDriverId" required placeholder="e.g. 1">
+                    <label for="noteDriverId">Driver *</label>
+                    <select id="noteDriverId" required>
+                        <option value="" disabled selected>-- Select Driver --</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Note Type *</label>
@@ -631,6 +1178,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=6"></script>
 </body>
 </html>

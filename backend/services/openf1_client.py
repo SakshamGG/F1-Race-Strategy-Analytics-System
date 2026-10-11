@@ -152,3 +152,104 @@ def fetch_pit(session_key, driver_number=None):
         })
     return results
 
+
+def fetch_openf1_drivers(session_key):
+    """Fetch driver metadata (number, code, name, team, team_colour) for an OpenF1 session."""
+    url = f"{BASE_URL}/drivers?session_key={session_key}"
+    response = requests.get(url, timeout=12)
+    response.raise_for_status()
+    data = response.json()
+    results = []
+    seen = set()
+    for d in data:
+        num = d.get("driver_number")
+        if num in seen:
+            continue
+        seen.add(num)
+        colour = d.get("team_colour") or "E10600"
+        if not str(colour).startswith("#"):
+            colour = f"#{colour}"
+        results.append({
+            "driver_number": num,
+            "code": d.get("name_acronym") or f"D{num}",
+            "full_name": d.get("full_name") or d.get("broadcast_name") or f"Driver {num}",
+            "first_name": d.get("first_name") or "",
+            "last_name": d.get("last_name") or "",
+            "team_name": d.get("team_name") or "F1 Team",
+            "team_colour": colour,
+            "country_code": d.get("country_code") or "",
+        })
+    return results
+
+
+def fetch_race_control(session_key):
+    """Fetch FIA race control messages (flags, Safety Car, VSC, DRS, penalties) from OpenF1."""
+    url = f"{BASE_URL}/race_control?session_key={session_key}"
+    response = requests.get(url, timeout=12)
+    response.raise_for_status()
+    data = response.json()
+    results = []
+    for item in data:
+        results.append({
+            "date": item.get("date"),
+            "lap_number": item.get("lap_number") or 1,
+            "category": item.get("category") or "Other",
+            "flag": (item.get("flag") or "").upper(),
+            "scope": item.get("scope") or "",
+            "sector": item.get("sector"),
+            "driver_number": item.get("driver_number"),
+            "message": item.get("message") or "",
+        })
+    return results
+
+
+def fetch_car_telemetry(session_key, driver_number, date_start=None, date_end=None):
+    """Fetch high-frequency car telemetry (speed, gear, throttle, brake, drs, rpm) from OpenF1."""
+    url = f"{BASE_URL}/car_data?session_key={session_key}&driver_number={driver_number}"
+    if date_start:
+        url += f"&date>={date_start}"
+    if date_end:
+        url += f"&date<={date_end}"
+    response = requests.get(url, timeout=15)
+    response.raise_for_status()
+    data = response.json()
+    # Downsample if very large to keep payload snappy
+    step = max(1, len(data) // 120) if len(data) > 120 else 1
+    results = []
+    for item in data[::step]:
+        drs_raw = item.get("drs", 0) or 0
+        results.append({
+            "date": item.get("date"),
+            "speed": float(item.get("speed") or 0.0),
+            "gear": int(item.get("n_gear") or 0),
+            "throttle": float(item.get("throttle") or 0.0),
+            "brake": float(item.get("brake") or 0.0),
+            "rpm": int(item.get("rpm") or 0),
+            "drs": 1 if drs_raw in (10, 12, 14, 1) else 0,
+            "drs_raw": drs_raw,
+        })
+    return results
+
+
+def fetch_car_location(session_key, driver_number, date_start=None, date_end=None):
+    """Fetch GPS track coordinates (x, y, z) from OpenF1."""
+    url = f"{BASE_URL}/location?session_key={session_key}&driver_number={driver_number}"
+    if date_start:
+        url += f"&date>={date_start}"
+    if date_end:
+        url += f"&date<={date_end}"
+    response = requests.get(url, timeout=15)
+    response.raise_for_status()
+    data = response.json()
+    step = max(1, len(data) // 120) if len(data) > 120 else 1
+    results = []
+    for item in data[::step]:
+        results.append({
+            "date": item.get("date"),
+            "x": float(item.get("x") or 0.0),
+            "y": float(item.get("y") or 0.0),
+            "z": float(item.get("z") or 0.0),
+        })
+    return results
+
+
