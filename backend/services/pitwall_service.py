@@ -1023,15 +1023,29 @@ def get_pitwall_catalog(season: int, db_conn_fn=None) -> dict:
                     })
 
                 cur.execute(
-                    """SELECT DISTINCT d.driver_id, d.first_name, d.last_name, d.nationality,
-                              COALESCE(c.name, 'F1 Team') AS team_name
+                    """SELECT d.driver_id, d.first_name, d.last_name, d.nationality,
+                              COALESCE(
+                                  st.team_name,
+                                  (SELECT c2.name FROM RACE_RESULTS rr2 JOIN RACES r2 ON rr2.race_id = r2.race_id JOIN CONSTRUCTORS c2 ON rr2.constructor_id = c2.constructor_id WHERE rr2.driver_id = d.driver_id AND r2.season_year = %s ORDER BY r2.round_number DESC LIMIT 1),
+                                  (SELECT c3.name FROM DRIVER_CONTRACTS dc3 JOIN CONSTRUCTORS c3 ON dc3.constructor_id = c3.constructor_id WHERE dc3.driver_id = d.driver_id ORDER BY dc3.season_year DESC LIMIT 1),
+                                  'F1 Team'
+                              ) AS team_name,
+                              st.position AS standing_position,
+                              st.points AS standing_points
                        FROM DRIVERS d
-                       LEFT JOIN RACE_RESULTS rr ON d.driver_id = rr.driver_id
-                       LEFT JOIN RACES r ON rr.race_id = r.race_id AND r.season_year = %s
-                       LEFT JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id
-                       WHERE r.season_year = %s
-                       ORDER BY d.last_name ASC""",
-                    (season, season),
+                       JOIN (
+                           SELECT driver_id FROM DRIVER_STANDINGS WHERE season_year = %s
+                           UNION
+                           SELECT rr.driver_id FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id WHERE r.season_year = %s
+                           UNION
+                           SELECT driver_id FROM DRIVER_SEASONS WHERE season_year = %s
+                       ) active ON d.driver_id = active.driver_id
+                       LEFT JOIN DRIVER_STANDINGS st ON d.driver_id = st.driver_id AND st.season_year = %s
+                       ORDER BY 
+                           CASE WHEN st.position IS NOT NULL AND st.position > 0 THEN st.position ELSE 9999 END ASC,
+                           COALESCE(st.points, 0) DESC,
+                           d.last_name ASC, d.first_name ASC""",
+                    (season, season, season, season, season),
                 )
                 db_drivers = cur.fetchall()
                 used_codes = set()
@@ -1045,6 +1059,8 @@ def get_pitwall_catalog(season: int, db_conn_fn=None) -> dict:
                         "name": f"{d['first_name']} {d['last_name']}",
                         "team": d["team_name"],
                         "nationality": d["nationality"],
+                        "standing_position": d.get("standing_position"),
+                        "standing_points": d.get("standing_points"),
                         "color": get_team_colour(d["team_name"], idx),
                     })
         except Exception:
@@ -2181,8 +2197,8 @@ def _build_full_race_replay(
     if session_type.lower() == "sprint":
         total_laps = max(15, min(24, int(round(total_laps * 0.33))))
 
-    # Sub-lap steps per lap so the full race scrub bar has ~220–300 smooth frames
-    steps_per_lap = 6 if total_laps <= 35 else 4
+    # Sub-lap steps per lap for rich telemetry checkpoints across the session
+    steps_per_lap = 8 if total_laps <= 35 else 6
     frames = []
     race_events = []
 

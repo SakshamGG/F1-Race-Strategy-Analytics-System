@@ -113,13 +113,21 @@ def test_db():
 
 def sync_season_standings_helper(season, cur, conn):
     """Fetch official standings from Jolpica API and store in DRIVER_STANDINGS, CONSTRUCTOR_STANDINGS, DRIVER_SEASONS, and CONSTRUCTOR_SEASONS."""
+    try:
+        cur.execute("ALTER TABLE DRIVER_STANDINGS ADD COLUMN team_name VARCHAR(100) NULL")
+        conn.commit()
+    except Exception:
+        pass
+
     from services.jolpica_client import fetch_driver_standings as fetch_api_driver_standings, fetch_constructor_standings as fetch_api_constructor_standings
     
-    api_drivers = fetch_api_driver_standings(season)
-    api_constructors = fetch_api_constructor_standings(season)
-
-    if not api_drivers and not api_constructors:
-        return False
+    api_drivers = []
+    api_constructors = []
+    try:
+        api_drivers = fetch_api_driver_standings(season)
+        api_constructors = fetch_api_constructor_standings(season)
+    except Exception:
+        pass
 
     # Ensure SEASONS relationship tables exist
     cur.execute("""
@@ -138,6 +146,77 @@ def sync_season_standings_helper(season, cur, conn):
             FOREIGN KEY (driver_id) REFERENCES DRIVERS(driver_id) ON DELETE CASCADE
         )
     """)
+
+    if not api_drivers and not api_constructors:
+        # Fallback: compute standings from local RACE_RESULTS if they exist for this season (e.g. simulation or future season)
+        cur.execute("""
+            SELECT 
+                d.driver_id,
+                d.first_name,
+                d.last_name,
+                d.nationality,
+                d.date_of_birth,
+                (
+                    SELECT c2.name 
+                    FROM RACE_RESULTS rr2 
+                    JOIN RACES r2 ON rr2.race_id = r2.race_id 
+                    JOIN CONSTRUCTORS c2 ON rr2.constructor_id = c2.constructor_id 
+                    WHERE rr2.driver_id = d.driver_id AND r2.season_year = %s 
+                    ORDER BY r2.round_number DESC LIMIT 1
+                ) AS team_name,
+                COALESCE(SUM(rr.points_scored), 0) AS total_points,
+                COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
+                COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums
+            FROM RACE_RESULTS rr
+            JOIN RACES r ON rr.race_id = r.race_id
+            JOIN DRIVERS d ON rr.driver_id = d.driver_id
+            WHERE r.season_year = %s
+            GROUP BY d.driver_id, d.first_name, d.last_name, d.nationality, d.date_of_birth
+            ORDER BY total_points DESC, wins DESC, d.last_name ASC
+        """, (season, season))
+        calc_drivers = cur.fetchall()
+
+        cur.execute("""
+            SELECT 
+                c.constructor_id,
+                c.name AS team_name,
+                c.nationality,
+                COALESCE(SUM(rr.points_scored), 0) AS total_points,
+                COUNT(CASE WHEN rr.finishing_position = 1 THEN 1 END) AS wins,
+                COUNT(CASE WHEN rr.finishing_position <= 3 THEN 1 END) AS podiums
+            FROM RACE_RESULTS rr
+            JOIN RACES r ON rr.race_id = r.race_id
+            JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id
+            WHERE r.season_year = %s
+            GROUP BY c.constructor_id, c.name, c.nationality
+            ORDER BY total_points DESC, wins DESC, c.name ASC
+        """, (season,))
+        calc_constructors = cur.fetchall()
+
+        if not calc_drivers and not calc_constructors:
+            return False
+
+        cur.execute("DELETE FROM DRIVER_STANDINGS WHERE season_year = %s", (season,))
+        cur.execute("DELETE FROM CONSTRUCTOR_STANDINGS WHERE season_year = %s", (season,))
+
+        for idx, c in enumerate(calc_constructors, start=1):
+            cur.execute(
+                """INSERT INTO CONSTRUCTOR_STANDINGS (season_year, constructor_id, position, points, wins, podiums)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (season, c["constructor_id"], idx, c["total_points"], c["wins"], c["podiums"])
+            )
+            cur.execute("INSERT IGNORE INTO CONSTRUCTOR_SEASONS (constructor_id, season_year) VALUES (%s, %s)", (c["constructor_id"], season))
+
+        for idx, d in enumerate(calc_drivers, start=1):
+            cur.execute("INSERT IGNORE INTO DRIVER_SEASONS (driver_id, season_year) VALUES (%s, %s)", (d["driver_id"], season))
+            cur.execute(
+                """INSERT INTO DRIVER_STANDINGS (season_year, driver_id, position, points, wins, podiums, team_name)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (season, d["driver_id"], idx, d["total_points"], d["wins"], d["podiums"], d["team_name"])
+            )
+
+        conn.commit()
+        return True
 
     # Pre-fetch existing drivers
     cur.execute("SELECT driver_id, first_name, last_name FROM DRIVERS")
@@ -278,23 +357,29 @@ def get_drivers():
                 SELECT DISTINCT d.driver_id, d.first_name, d.last_name, d.nationality, d.date_of_birth,
                        COALESCE(
                            st.team_name,
-                           (SELECT c.name FROM DRIVER_CONTRACTS dc JOIN CONSTRUCTORS c ON dc.constructor_id = c.constructor_id WHERE dc.driver_id = d.driver_id AND dc.season_year = ds.season_year LIMIT 1),
-                           (SELECT c.name FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE rr.driver_id = d.driver_id AND r.season_year = ds.season_year LIMIT 1),
+                           (SELECT c.name FROM DRIVER_CONTRACTS dc JOIN CONSTRUCTORS c ON dc.constructor_id = c.constructor_id WHERE dc.driver_id = d.driver_id AND dc.season_year = %s LIMIT 1),
+                           (SELECT c.name FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE rr.driver_id = d.driver_id AND r.season_year = %s ORDER BY r.round_number DESC LIMIT 1),
                            (SELECT c.name FROM DRIVER_CONTRACTS dc JOIN CONSTRUCTORS c ON dc.constructor_id = c.constructor_id WHERE dc.driver_id = d.driver_id ORDER BY dc.season_year DESC LIMIT 1),
-                           (SELECT c.name FROM RACE_RESULTS rr JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE rr.driver_id = d.driver_id LIMIT 1)
+                           (SELECT c.name FROM RACE_RESULTS rr JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE rr.driver_id = d.driver_id LIMIT 1),
+                           'F1 Team'
                        ) AS team_name,
                        st.position AS standing_position,
                        st.points AS standing_points,
                        st.wins AS standing_wins
                 FROM DRIVERS d
-                JOIN DRIVER_SEASONS ds ON d.driver_id = ds.driver_id
-                LEFT JOIN DRIVER_STANDINGS st ON d.driver_id = st.driver_id AND st.season_year = ds.season_year
-                WHERE ds.season_year = %s
+                JOIN (
+                    SELECT driver_id FROM DRIVER_SEASONS WHERE season_year = %s
+                    UNION
+                    SELECT driver_id FROM DRIVER_STANDINGS WHERE season_year = %s
+                    UNION
+                    SELECT rr.driver_id FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id WHERE r.season_year = %s
+                ) active ON d.driver_id = active.driver_id
+                LEFT JOIN DRIVER_STANDINGS st ON d.driver_id = st.driver_id AND st.season_year = %s
                 ORDER BY 
                     CASE WHEN st.position IS NOT NULL AND st.position > 0 THEN st.position ELSE 9999 END ASC,
                     COALESCE(st.points, 0) DESC,
                     d.last_name ASC, d.first_name ASC
-            """, (season_year,))
+            """, (season_year, season_year, season_year, season_year, season_year, season_year))
             rows = cur.fetchall()
             return jsonify(serialize_rows(rows))
 
@@ -504,14 +589,19 @@ def get_constructors():
                        st.points AS standing_points,
                        st.wins AS standing_wins
                 FROM CONSTRUCTORS c
-                JOIN CONSTRUCTOR_SEASONS cs ON c.constructor_id = cs.constructor_id
-                LEFT JOIN CONSTRUCTOR_STANDINGS st ON c.constructor_id = st.constructor_id AND st.season_year = cs.season_year
-                WHERE cs.season_year = %s
+                JOIN (
+                    SELECT constructor_id FROM CONSTRUCTOR_SEASONS WHERE season_year = %s
+                    UNION
+                    SELECT constructor_id FROM CONSTRUCTOR_STANDINGS WHERE season_year = %s
+                    UNION
+                    SELECT rr.constructor_id FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id WHERE r.season_year = %s AND rr.constructor_id IS NOT NULL
+                ) active ON c.constructor_id = active.constructor_id
+                LEFT JOIN CONSTRUCTOR_STANDINGS st ON c.constructor_id = st.constructor_id AND st.season_year = %s
                 ORDER BY 
                     CASE WHEN st.position IS NOT NULL AND st.position > 0 THEN st.position ELSE 9999 END ASC,
                     COALESCE(st.points, 0) DESC,
                     c.name ASC
-            """, (season_year,))
+            """, (season_year, season_year, season_year, season_year))
             rows = cur.fetchall()
             return jsonify(serialize_rows(rows))
 
@@ -2703,6 +2793,7 @@ def get_driver_standings(season):
                 CONCAT(d.first_name, ' ', d.last_name) AS driver_name,
                 COALESCE(
                     ds.team_name,
+                    (SELECT c.name FROM DRIVER_CONTRACTS dc JOIN CONSTRUCTORS c ON dc.constructor_id = c.constructor_id WHERE dc.driver_id = ds.driver_id AND dc.season_year = ds.season_year LIMIT 1),
                     (SELECT c.name FROM RACE_RESULTS rr JOIN RACES r ON rr.race_id = r.race_id JOIN CONSTRUCTORS c ON rr.constructor_id = c.constructor_id WHERE r.season_year = ds.season_year AND rr.driver_id = ds.driver_id ORDER BY r.round_number DESC LIMIT 1),
                     'F1 Team'
                 ) AS team_name,

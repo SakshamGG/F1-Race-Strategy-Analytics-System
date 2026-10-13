@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=20261014_continuous">
 </head>
 <body>
     <!-- Mobile Backdrop Overlay -->
@@ -843,13 +843,13 @@
             </div>
         </section>
 
-        <!-- ==================== 2D TRACK REPLAY & INTERACTIVE CONTROLS (race_replay.py, qualifying.py, practice.py) ==================== -->
+        <!-- ==================== 2D TRACK REPLAY & INTERACTIVE CONTROLS ==================== -->
         <section class="content-section" id="section-replay">
-            <div class="section-header">
+            <div class="section-header replay-section-header">
                 <div>
-                    <h2 class="section-title">🏎️ 2D Track Replay &amp; Interactive Controls</h2>
+                    <h2 class="section-title">🏎️ 2D Track Replay &amp; Interactive Telemetry</h2>
                     <p class="text-muted" id="replaySubtitle">
-                        Real-time 20-car GPS circuit animation with DRS zones, Sector 1/2/3 markers, Live Leaderboard (Gaps, Tyre Health, PIT/OUT), Weather HUD, and Qualifying/Practice modes
+                        Real-time GPS circuit telemetry, DRS zones, sector markers, live timing tower, and weather radar
                     </p>
                 </div>
                 <div class="pitwall-header-badges">
@@ -858,89 +858,89 @@
                 </div>
             </div>
 
-            <!-- Session Selector & Display Toggles Bar -->
-            <div class="card replay-toolbar-card mb-2">
-                <div class="replay-toolbar-grid">
-                    <div class="pitwall-field">
-                        <label for="replaySeasonSelect">Season (1950–2026)</label>
-                        <div class="season-combo-wrapper">
-                            <input type="text" id="replaySeasonSelect" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 2024, 1994)" value="2024" onchange="onReplaySeasonChange()" onkeydown="if(event.key==='Enter') onReplaySeasonChange()" autocomplete="off">
-                            <button class="btn btn-secondary btn-sm" onclick="onReplaySeasonChange()" title="Load Season">Go</button>
+            <!-- Unified Glass Replay Command Center -->
+            <div class="replay-command-center">
+                <!-- Row 1: Session & Circuit Selection -->
+                <div class="replay-control-strip">
+                    <div class="replay-selector-group">
+                        <div class="replay-field-mini">
+                            <label for="replaySeasonSelect">Season</label>
+                            <div class="season-combo-wrapper">
+                                <input type="text" id="replaySeasonSelect" list="seasonSuggestionsList" class="season-combo-input" placeholder="Year" value="2024" onchange="onReplaySeasonChange()" onkeydown="if(event.key==='Enter') onReplaySeasonChange()" autocomplete="off">
+                                <button class="btn btn-secondary btn-sm" onclick="onReplaySeasonChange()" title="Load Season">Go</button>
+                            </div>
+                        </div>
+
+                        <div class="replay-field-mini replay-circuit-field">
+                            <label for="replayRaceSelect">Grand Prix</label>
+                            <select id="replayRaceSelect" onchange="onReplayRaceChange()">
+                                <option value="1">Loading calendar...</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div class="pitwall-field">
-                        <label for="replayRaceSelect">Grand Prix / Circuit</label>
-                        <select id="replayRaceSelect" onchange="onReplayRaceChange()">
-                            <option value="1">Loading calendar...</option>
-                        </select>
-                    </div>
-
-                    <div class="pitwall-field">
-                        <label>Session Interface (<code>race_replay.py</code> / <code>qualifying.py</code> / <code>practice.py</code>)</label>
+                    <div class="replay-session-group">
+                        <label>Session</label>
                         <div class="replay-mode-tabs">
                             <button class="replay-mode-tab active" data-mode="Race" onclick="setReplaySessionMode('Race')">🏁 Race</button>
                             <button class="replay-mode-tab" data-mode="Sprint" onclick="setReplaySessionMode('Sprint')">⚡ Sprint</button>
                             <button class="replay-mode-tab" data-mode="Qualifying" onclick="setReplaySessionMode('Qualifying')">⏱️ Qualifying</button>
-                            <button class="replay-mode-tab" data-mode="FP1" onclick="setReplaySessionMode('FP1')">🔧 FP1</button>
-                            <button class="replay-mode-tab" data-mode="FP2" onclick="setReplaySessionMode('FP2')">🔧 FP2</button>
-                            <button class="replay-mode-tab" data-mode="FP3" onclick="setReplaySessionMode('FP3')">🔧 FP3</button>
+                            <button class="replay-mode-tab" data-mode="FP1" onclick="setReplaySessionMode('FP1')">FP1</button>
+                            <button class="replay-mode-tab" data-mode="FP2" onclick="setReplaySessionMode('FP2')">FP2</button>
+                            <button class="replay-mode-tab" data-mode="FP3" onclick="setReplaySessionMode('FP3')">FP3</button>
                         </div>
                     </div>
 
-                    <div class="pitwall-field hidden" id="replayQualiSegmentField">
-                        <label>Qualifying Segment (<code>QualifyingSegmentSelectorComponent</code>)</label>
+                    <div class="replay-field-mini hidden" id="replayQualiSegmentField">
+                        <label>Shootout</label>
                         <div class="replay-mode-tabs">
-                            <button class="replay-seg-tab" data-seg="Q1" onclick="setReplayQualiSegment('Q1')">Q1 (All 20)</button>
-                            <button class="replay-seg-tab" data-seg="Q2" onclick="setReplayQualiSegment('Q2')">Q2 (Top 15)</button>
-                            <button class="replay-seg-tab active" data-seg="Q3" onclick="setReplayQualiSegment('Q3')">Q3 (Top 10 Shootout)</button>
+                            <button class="replay-seg-tab" data-seg="Q1" onclick="setReplayQualiSegment('Q1')">Q1</button>
+                            <button class="replay-seg-tab" data-seg="Q2" onclick="setReplayQualiSegment('Q2')">Q2</button>
+                            <button class="replay-seg-tab active" data-seg="Q3" onclick="setReplayQualiSegment('Q3')">Q3</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- View Toggles & Circuit Rotation -->
-                <div class="replay-toggles-bar">
-                    <button class="pitwall-window-pill active" id="btnReplayToggleDrs" onclick="toggleReplayOption('drs')">🟢 DRS Zones (D)</button>
-                    <button class="pitwall-window-pill active" id="btnReplayToggleSectors" onclick="toggleReplayOption('sectors')">📍 Sector Markers (S)</button>
-                    <button class="pitwall-window-pill active" id="btnReplayToggleLabels" onclick="toggleReplayOption('labels')">🏷️ Driver Labels</button>
-                    <button class="pitwall-window-pill" id="btnReplayToggleChart" onclick="toggleReplayOption('chart')">📈 Split Telemetry Trace (C)</button>
-                    <button class="pitwall-window-pill" id="btnReplayToggleChamp" onclick="toggleReplayOption('championship')">🏆 Live Championship</button>
-                    <button class="pitwall-window-pill active" id="btnReplayToggleHud" onclick="toggleReplayOption('hud')">🖥️ Visible HUD</button>
+                <!-- Row 2: Overlays & View Options -->
+                <div class="replay-options-strip">
+                    <div class="replay-toggles-cluster">
+                        <button class="pitwall-window-pill active" id="btnReplayToggleDrs" onclick="toggleReplayOption('drs')">🟢 DRS (D)</button>
+                        <button class="pitwall-window-pill active" id="btnReplayToggleSectors" onclick="toggleReplayOption('sectors')">📍 Sectors (S)</button>
+                        <button class="pitwall-window-pill active" id="btnReplayToggleLabels" onclick="toggleReplayOption('labels')">🏷️ Labels</button>
+                        <button class="pitwall-window-pill" id="btnReplayToggleChart" onclick="toggleReplayOption('chart')">📈 Split Trace (C)</button>
+                        <button class="pitwall-window-pill" id="btnReplayToggleChamp" onclick="toggleReplayOption('championship')">🏆 Standings</button>
+                        <button class="pitwall-window-pill active" id="btnReplayToggleHud" onclick="toggleReplayOption('hud')">🖥️ HUD</button>
+                    </div>
 
                     <div class="replay-rotation-control">
-                        <label for="replayRotationSlider">🔄 Circuit Rotation: <span id="replayRotationVal">0°</span></label>
+                        <label for="replayRotationSlider">🔄 Rotate: <span id="replayRotationVal">0°</span></label>
                         <input type="range" id="replayRotationSlider" min="0" max="360" step="5" value="0" oninput="onReplayRotationChange(this.value)">
+                        <button class="btn btn-secondary btn-xs" onclick="onReplayRotationChange(0); document.getElementById('replayRotationSlider').value=0;" title="Reset rotation to 0°">Reset</button>
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== MAIN 2D TRACK REPLAY STAGE (Arcade Window Layout) ==================== -->
+            <!-- ==================== MAIN 2D TRACK REPLAY STAGE ==================== -->
             <div class="replay-theater-stage" id="replayTheaterStage">
 
-                <!-- LEFT HUD COLUMN: Session Banner, Weather HUD, Selected Driver Info & Championship Overlays -->
+                <!-- LEFT HUD COLUMN: Session Banner, Driver Telemetry, Weather & Championship -->
                 <div class="replay-left-hud" id="replayLeftHud">
-                    <!-- Top-Left Lap / Clock / Track Status Banner -->
+                    <!-- Top Timing Banner -->
                     <div class="replay-banner-box">
-                        <div class="replay-event-title" id="replayBannerEvent">2024 Bahrain Grand Prix</div>
-                        <div class="replay-circuit-sub" id="replayBannerCircuit">Bahrain International Circuit • 5412m</div>
-                        <div class="replay-lap-counter" id="replayLapText">LAP 1 / 57</div>
-                        <div class="replay-clock-text" id="replayClockText">00:00:00</div>
+                        <div class="replay-banner-header">
+                            <div>
+                                <div class="replay-event-title" id="replayBannerEvent">2024 Bahrain Grand Prix</div>
+                                <div class="replay-circuit-sub" id="replayBannerCircuit">Bahrain International Circuit • 5412m</div>
+                            </div>
+                        </div>
+                        <div class="replay-banner-stats">
+                            <div class="replay-lap-counter" id="replayLapText">LAP 1 / 57</div>
+                            <div class="replay-clock-text" id="replayClockText">00:00:00</div>
+                        </div>
                         <div class="replay-status-badge green" id="replayTrackStatusBadge">🟢 TRACK CLEAR</div>
                     </div>
 
-                    <!-- Weather HUD Component (WeatherComponent in src/ui_components.py) -->
-                    <div class="replay-weather-box" id="replayWeatherBox">
-                        <div class="replay-box-title">⛅ WEATHER HUD</div>
-                        <div class="weather-hud-rows">
-                            <div class="weather-hud-row"><span>🌡️ Track Temp</span><strong id="rwTrackTemp">37.5°C</strong></div>
-                            <div class="weather-hud-row"><span>🌤️ Air Temp</span><strong id="rwAirTemp">26.0°C</strong></div>
-                            <div class="weather-hud-row"><span>💧 Humidity</span><strong id="rwHumidity">48%</strong></div>
-                            <div class="weather-hud-row"><span>💨 Wind</span><strong id="rwWind">9.2 km/h NNE</strong></div>
-                            <div class="weather-hud-row"><span>🌧️ Rain</span><strong id="rwRain">DRY (0%)</strong></div>
-                        </div>
-                    </div>
-
-                    <!-- Selected Driver Telemetry & Tyre Degradation Info (DriverInfoComponent) -->
+                    <!-- Selected Driver Telemetry -->
                     <div class="replay-driver-info-box" id="replayDriverInfoBox">
                         <div class="replay-box-title">
                             <span>🏎️ DRIVER TELEMETRY</span>
@@ -949,7 +949,19 @@
                         <div id="replaySelectedDriverContent"></div>
                     </div>
 
-                    <!-- Live Championship Standings Overlays (DriversChampionshipOverlay / ConstructorsChampionshipOverlay) -->
+                    <!-- Compact Weather HUD -->
+                    <div class="replay-weather-box" id="replayWeatherBox">
+                        <div class="replay-box-title">⛅ WEATHER CONDITIONS</div>
+                        <div class="weather-hud-rows">
+                            <div class="weather-hud-row"><span>Track</span><strong id="rwTrackTemp">37.5°C</strong></div>
+                            <div class="weather-hud-row"><span>Air</span><strong id="rwAirTemp">26.0°C</strong></div>
+                            <div class="weather-hud-row"><span>Humidity</span><strong id="rwHumidity">48%</strong></div>
+                            <div class="weather-hud-row"><span>Wind</span><strong id="rwWind">9.2 km/h NNE</strong></div>
+                            <div class="weather-hud-row"><span>Rain State</span><strong id="rwRain">DRY (0%)</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Live Championship Standings Overlay -->
                     <div class="replay-champ-box hidden" id="replayChampBox">
                         <div class="replay-box-title">
                             <span>🏆 LIVE CHAMPIONSHIP</span>
@@ -962,25 +974,25 @@
                     </div>
                 </div>
 
-                <!-- CENTER STAGE: Optional Split Telemetry Trace + 2D GPS Circuit Canvas -->
+                <!-- CENTER STAGE: Split Telemetry Trace + 2D GPS Circuit Canvas -->
                 <div class="replay-center-stage">
-                    <!-- Split-Screen Telemetry Chart (Qualifying / Practice / Race Comparison) -->
+                    <!-- Split-Screen Telemetry Chart -->
                     <div class="replay-split-chart-wrap hidden" id="replaySplitChartWrap">
                         <div class="replay-split-chart-header">
                             <span id="replaySplitChartTitle">Flying Lap Telemetry Comparison (Speed 50% • Gear 25% • Pedals 25%)</span>
                             <div class="replay-split-chart-actions">
-                                <button class="btn btn-secondary btn-sm" onclick="cycleReplayComparisonDriver()">Cycle Compare (C)</button>
-                                <button class="btn btn-secondary btn-sm" onclick="clearReplayComparisonDrivers()">Clear Compare (V)</button>
+                                <button class="btn btn-secondary btn-xs" onclick="cycleReplayComparisonDriver()">Cycle Compare (C)</button>
+                                <button class="btn btn-secondary btn-xs" onclick="clearReplayComparisonDrivers()">Clear Compare (V)</button>
                             </div>
                         </div>
-                        <canvas id="replaySplitTelemetryCanvas" width="760" height="225"></canvas>
+                        <canvas id="replaySplitTelemetryCanvas" width="760" height="200"></canvas>
                     </div>
 
-                    <!-- 2D GPS Circuit Canvas -->
+                    <!-- 2D GPS Circuit Canvas Viewport -->
                     <div class="replay-circuit-canvas-wrap" id="replayCircuitCanvasWrap">
                         <canvas id="trackReplayCanvas" width="820" height="540"></canvas>
 
-                        <!-- Controls Help Popup Overlay (ControlsPopupComponent) -->
+                        <!-- Controls Help Popup Overlay -->
                         <div class="replay-controls-popup hidden" id="replayControlsPopup">
                             <div class="replay-popup-header">
                                 <strong>⌨️ Interactive Replay Controls</strong>
@@ -990,7 +1002,7 @@
                                 <div><kbd>SPACE</kbd> Pause / Resume Replay</div>
                                 <div><kbd>←</kbd> / <kbd>→</kbd> Rewind / Fast-Forward</div>
                                 <div><kbd>↑</kbd> / <kbd>↓</kbd> Playback Speed +/-</div>
-                                <div><kbd>1</kbd>–<kbd>4</kbd> Set Speed (0.5x / 1x / 2x / 4x)</div>
+                                <div><kbd>1</kbd>–<kbd>6</kbd> Set Speed (0.1x / 0.25x / 0.5x / 1x / 2x / 4x)</div>
                                 <div><kbd>R</kbd> Restart Session / Lap</div>
                                 <div><kbd>D</kbd> Toggle DRS Zones</div>
                                 <div><kbd>S</kbd> Toggle Sector Markers</div>
@@ -1004,25 +1016,24 @@
                     </div>
                 </div>
 
-                <!-- RIGHT HUD COLUMN: Live Leaderboard (LeaderboardComponent / LapTimeLeaderboardComponent) -->
+                <!-- RIGHT HUD COLUMN: Live Timing Leaderboard Tower -->
                 <div class="replay-right-leaderboard" id="replayRightLeaderboard">
                     <div class="replay-lb-header">
-                        <span class="replay-lb-title" id="replayLeaderboardTitle">LEADERBOARD</span>
-                        <!-- Interval (I) vs Leader (L) radio buttons from LeaderboardComponent -->
+                        <span class="replay-lb-title" id="replayLeaderboardTitle">TIMING TOWER</span>
                         <div class="replay-lb-radios" id="replayLbGapRadios">
-                            <button class="lb-radio-btn" id="btnLbIntervalGap" onclick="setReplayGapMode('interval')" title="Show Interval Gaps to Car Ahead (I)">I</button>
-                            <button class="lb-radio-btn active" id="btnLbLeaderGap" onclick="setReplayGapMode('leader')" title="Show Gap to Race Leader (L)">L</button>
+                            <button class="lb-radio-btn" id="btnLbIntervalGap" onclick="setReplayGapMode('interval')" title="Interval to car ahead (I)">I</button>
+                            <button class="lb-radio-btn active" id="btnLbLeaderGap" onclick="setReplayGapMode('leader')" title="Gap to leader (L)">L</button>
                         </div>
                     </div>
-                    <div class="replay-lb-sub">Click: Primary • Shift+Click: Compare</div>
+                    <div class="replay-lb-sub">Click: Select • Shift+Click: Compare</div>
                     <div class="replay-lb-rows" id="replayLeaderboardRows"></div>
                 </div>
 
             </div>
 
-            <!-- BOTTOM BAR: Scrubbable Progress Bar with Event Markers + Playback Controls -->
-            <div class="card replay-bottom-bar mt-2">
-                <!-- Scrubbable Race Progress Bar with Lap Ticks & Event Markers (RaceProgressBarComponent) -->
+            <!-- BOTTOM DECK: Scrubber & Playback Console -->
+            <div class="replay-player-deck">
+                <!-- Scrubbable Race Progress Bar -->
                 <div class="replay-progress-container">
                     <div class="replay-progress-labels">
                         <span id="replayProgressLeftLabel">Lap 1 / 57 (0.0%)</span>
@@ -1036,25 +1047,27 @@
                     </div>
                     <div class="replay-progress-track-wrap">
                         <div class="replay-progress-events-layer" id="replayProgressEventsLayer"></div>
-                        <input type="range" id="replayProgressScrubber" min="0" max="100" value="0" oninput="onReplayScrubberInput(this.value)">
+                        <input type="range" id="replayProgressScrubber" min="0" max="100" step="any" value="0" oninput="onReplayScrubberInput(this.value)">
                     </div>
                 </div>
 
-                <!-- Interactive Playback Controls (RaceControlsComponent) -->
+                <!-- Playback Transport Row -->
                 <div class="replay-controls-row">
                     <div class="replay-transport-btns">
                         <button class="btn btn-secondary btn-sm" onclick="restartTrackReplay()" title="Restart (R)">↺ Restart</button>
-                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(-10)" title="Rewind (←)">⏪ Rewind</button>
+                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(-10)" title="Rewind (←)">⏪ -10</button>
                         <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(-1)" title="Step Back 1 Frame">⏮ -1</button>
-                        <button class="btn btn-primary btn-sm" id="btnTrackReplayPlay" onclick="toggleTrackReplayPlayback()">▶ Play Replay</button>
+                        <button class="btn btn-primary btn-sm btn-play-highlight" id="btnTrackReplayPlay" onclick="toggleTrackReplayPlayback()">▶ Play Replay</button>
                         <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(1)" title="Step Forward 1 Frame">+1 ⏭</button>
-                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(10)" title="Fast-Forward (→)">Fast-Fwd ⏩</button>
+                        <button class="btn btn-secondary btn-sm" onclick="jumpTrackReplayFrames(10)" title="Fast-Forward (→)">+10 ⏩</button>
                     </div>
 
                     <div class="replay-speed-pills">
-                        <span class="text-muted">Playback Speed:</span>
+                        <span class="text-muted" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Speed</span>
+                        <button class="pitwall-speed-btn" data-rspeed="0.1" onclick="setTrackReplaySpeed(0.1)">0.1x</button>
                         <button class="pitwall-speed-btn" data-rspeed="0.25" onclick="setTrackReplaySpeed(0.25)">0.25x</button>
                         <button class="pitwall-speed-btn" data-rspeed="0.5" onclick="setTrackReplaySpeed(0.5)">0.5x</button>
+                        <button class="pitwall-speed-btn" data-rspeed="0.75" onclick="setTrackReplaySpeed(0.75)">0.75x</button>
                         <button class="pitwall-speed-btn active" data-rspeed="1" onclick="setTrackReplaySpeed(1)">1x</button>
                         <button class="pitwall-speed-btn" data-rspeed="2" onclick="setTrackReplaySpeed(2)">2x</button>
                         <button class="pitwall-speed-btn" data-rspeed="4" onclick="setTrackReplaySpeed(4)">4x</button>
@@ -1178,6 +1191,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=6"></script>
+    <script src="script.js?v=20261014_continuous"></script>
 </body>
 </html>

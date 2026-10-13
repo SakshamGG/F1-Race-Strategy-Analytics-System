@@ -1967,68 +1967,159 @@ select option:checked {
         grid-template-columns: 1fr;
     }
 }
-
 /* ============================================================================
-   2D TRACK REPLAY & INTERACTIVE CONTROLS (race_replay.py, qualifying.py, practice.py)
+   2D TRACK REPLAY & INTERACTIVE TELEMETRY (Glass Cockpit UI)
    ============================================================================ */
 
-.replay-toolbar-card {
-    background: linear-gradient(145deg, rgba(18, 24, 40, 0.94), rgba(10, 14, 24, 0.96));
-    border: 1px solid rgba(225, 6, 0, 0.28);
+.replay-section-header {
+    margin-bottom: 12px;
 }
 
-.replay-toolbar-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+/* --- Master Glass Command Deck --- */
+.replay-command-center {
+    background: var(--glass-bg-card);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius);
+    padding: 12px 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--glass-shadow);
+    transition: var(--transition);
+}
+
+.replay-command-center:hover {
+    border-color: var(--glass-border-light);
+}
+
+.replay-control-strip {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 14px;
-    align-items: end;
+}
+
+.replay-selector-group {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.replay-field-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.replay-field-mini label,
+.replay-session-group label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+}
+
+.replay-circuit-field select {
+    min-width: 240px;
+    height: 36px;
+    background: var(--glass-bg-input);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-light);
+    font-size: 13px;
+    padding: 0 10px;
+}
+
+.replay-session-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .replay-mode-tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .replay-mode-tab,
 .replay-seg-tab {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
+    background: transparent;
+    border: none;
     color: var(--text-secondary);
-    padding: 7px 11px;
-    border-radius: 7px;
+    padding: 5px 11px;
+    border-radius: 6px;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.16s ease;
 }
 
 .replay-mode-tab:hover,
 .replay-seg-tab:hover {
-    border-color: var(--accent);
     color: #fff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .replay-mode-tab.active,
 .replay-seg-tab.active {
-    background: linear-gradient(135deg, var(--accent), #b30500);
-    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--accent-red), #b30500);
     color: #fff;
     box-shadow: 0 2px 10px rgba(225, 6, 0, 0.35);
 }
 
-.replay-toggles-bar {
+/* --- Row 2: Overlays Strip --- */
+.replay-options-strip {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
     align-items: center;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.replay-toggles-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.pitwall-window-pill {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pitwall-window-pill:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.pitwall-window-pill.active {
+    background: rgba(0, 210, 190, 0.15);
+    border-color: rgba(0, 210, 190, 0.55);
+    color: #00e6d2;
+    box-shadow: 0 0 12px rgba(0, 210, 190, 0.22);
 }
 
 .replay-rotation-control {
-    margin-left: auto;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -2037,17 +2128,24 @@ select option:checked {
 }
 
 .replay-rotation-control input[type="range"] {
-    width: 110px;
-    accent-color: var(--accent);
+    width: 95px;
+    accent-color: var(--accent-red);
 }
 
-/* --- 3-Column Arcade Window Stage --- */
+.btn-xs {
+    padding: 2px 7px;
+    font-size: 11px;
+    border-radius: 4px;
+}
+
+/* --- 3-Column Cockpit Stage Layout --- */
 .replay-theater-stage {
     display: grid;
-    grid-template-columns: 270px 1fr 275px;
+    grid-template-columns: 280px minmax(0, 1fr) 280px;
     gap: 14px;
+    height: 640px;
     align-items: stretch;
-    min-height: 555px;
+    margin-bottom: 14px;
 }
 
 .replay-theater-stage.hud-hidden {
@@ -2059,40 +2157,65 @@ select option:checked {
     display: none;
 }
 
+/* --- Left HUD Column --- */
 .replay-left-hud {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    height: 100%;
+    overflow: hidden;
 }
 
 .replay-banner-box,
 .replay-weather-box,
 .replay-driver-info-box,
 .replay-champ-box {
-    background: rgba(9, 12, 22, 0.92);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    background: var(--glass-bg-card);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius);
     padding: 11px 13px;
+    box-shadow: var(--glass-shadow);
+}
+
+.replay-banner-box {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .replay-event-title {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 700;
     color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .replay-circuit-sub {
     font-size: 11px;
     color: var(--text-muted);
-    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.replay-banner-stats {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 2px 0;
 }
 
 .replay-lap-counter {
     font-family: 'Rajdhani', sans-serif;
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 800;
     color: #fff;
-    line-height: 1.05;
+    line-height: 1;
 }
 
 .replay-clock-text {
@@ -2100,38 +2223,38 @@ select option:checked {
     font-size: 18px;
     font-weight: 700;
     color: #00d2be;
-    margin: 2px 0 6px 0;
 }
 
 .replay-status-badge {
-    display: inline-block;
-    padding: 4px 10px;
+    display: block;
+    text-align: center;
+    padding: 4px 8px;
     border-radius: 6px;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.8px;
 }
 
 .replay-status-badge.green {
-    background: rgba(0, 230, 118, 0.14);
+    background: rgba(0, 230, 118, 0.12);
     border: 1px solid rgba(0, 230, 118, 0.45);
     color: #00e676;
 }
 
 .replay-status-badge.sc {
-    background: rgba(255, 145, 0, 0.22);
+    background: rgba(255, 145, 0, 0.18);
     border: 1px solid #ff9100;
     color: #ffb300;
 }
 
 .replay-status-badge.vsc {
-    background: rgba(255, 214, 0, 0.2);
+    background: rgba(255, 214, 0, 0.16);
     border: 1px solid #ffd600;
     color: #ffe57f;
 }
 
 .replay-status-badge.chequered {
-    background: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.14);
     border: 1px solid #fff;
     color: #fff;
 }
@@ -2140,40 +2263,70 @@ select option:checked {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 800;
     letter-spacing: 0.8px;
     color: var(--text-muted);
-    margin-bottom: 8px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    margin-bottom: 7px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Compact Weather HUD Grid */
+.replay-weather-box {
+    flex-shrink: 0;
 }
 
 .weather-hud-rows {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 5px;
 }
 
 .weather-hud-row {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 4px 8px;
     display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.weather-hud-row:last-child {
+    grid-column: span 2;
+    flex-direction: row;
     justify-content: space-between;
-    font-size: 12.5px;
-    color: var(--text-secondary);
+    align-items: center;
+}
+
+.weather-hud-row span {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
 }
 
 .weather-hud-row strong {
     font-family: 'Rajdhani', monospace;
-    font-size: 14px;
+    font-size: 13px;
     color: #fff;
 }
 
-/* --- Selected Driver Info Box & Tyre Health Bar --- */
+/* Selected Driver Telemetry Box */
+.replay-driver-info-box {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
 .driver-info-card {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 6px 0;
+    gap: 5px;
+    padding: 5px 0;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
 }
 
@@ -2185,30 +2338,30 @@ select option:checked {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 700;
 }
 
 .driver-info-metrics {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
+    gap: 3px;
     font-family: 'Rajdhani', monospace;
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--text-secondary);
 }
 
 .tyre-health-strip {
     display: flex;
     align-items: center;
-    gap: 7px;
-    font-size: 11px;
+    gap: 6px;
+    font-size: 10.5px;
 }
 
 .tyre-health-bar-outer {
     flex: 1;
-    height: 7px;
-    background: rgba(255, 255, 255, 0.09);
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 99px;
     overflow: hidden;
 }
@@ -2219,7 +2372,7 @@ select option:checked {
     transition: width 0.12s linear;
 }
 
-/* --- Championship Overlay Box --- */
+/* Championship Overlay Box */
 .champ-tab-group {
     display: inline-flex;
     gap: 4px;
@@ -2236,8 +2389,8 @@ select option:checked {
 }
 
 .champ-mini-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-red);
+    border-color: var(--accent-red);
     color: #fff;
 }
 
@@ -2245,7 +2398,7 @@ select option:checked {
     display: flex;
     flex-direction: column;
     gap: 3px;
-    max-height: 165px;
+    max-height: 150px;
     overflow-y: auto;
     font-size: 11.5px;
 }
@@ -2263,24 +2416,31 @@ select option:checked {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    height: 100%;
     min-width: 0;
 }
 
 .replay-split-chart-wrap {
     background: rgba(7, 10, 18, 0.95);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius);
     padding: 8px 10px;
+    flex-shrink: 0;
 }
 
 .replay-split-chart-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-secondary);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
+}
+
+.replay-split-chart-actions {
+    display: flex;
+    gap: 4px;
 }
 
 .replay-split-chart-wrap canvas {
@@ -2291,30 +2451,40 @@ select option:checked {
 
 .replay-circuit-canvas-wrap {
     flex: 1;
-    background: radial-gradient(circle at center, rgba(16, 22, 38, 0.96), rgba(6, 9, 16, 0.98));
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    min-height: 0;
+    background: radial-gradient(circle at center, rgba(16, 22, 38, 0.5) 0%, rgba(3, 5, 10, 0.98) 100%);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius);
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8), var(--glass-shadow);
 }
 
 .replay-circuit-canvas-wrap canvas {
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    aspect-ratio: 820 / 540;
     display: block;
+    object-fit: contain;
 }
 
-/* --- Controls Help Popup (ControlsPopupComponent) --- */
+/* Controls Help Popup */
 .replay-controls-popup {
     position: absolute;
-    left: 16px;
-    bottom: 16px;
-    width: 325px;
-    background: rgba(10, 14, 24, 0.96);
-    border: 1px solid var(--accent);
+    left: 14px;
+    bottom: 14px;
+    width: 310px;
+    background: rgba(10, 14, 24, 0.95);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--accent-red);
     border-radius: 10px;
     padding: 12px 14px;
     box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85);
@@ -2327,24 +2497,24 @@ select option:checked {
     align-items: center;
     margin-bottom: 8px;
     padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 12.5px;
 }
 
 .replay-popup-body {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    font-size: 11.5px;
+    font-size: 11px;
     color: var(--text-secondary);
 }
 
 .replay-popup-body kbd {
     display: inline-block;
-    min-width: 54px;
-    padding: 1px 6px;
+    min-width: 50px;
+    padding: 1px 5px;
     background: rgba(255, 255, 255, 0.08);
-    border: 1px solid var(--border-light);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     font-family: 'Rajdhani', monospace;
     font-weight: 700;
@@ -2352,14 +2522,18 @@ select option:checked {
     margin-right: 6px;
 }
 
-/* --- Right Leaderboard (LeaderboardComponent) --- */
+/* --- Right Timing Tower Leaderboard --- */
 .replay-right-leaderboard {
-    background: rgba(9, 12, 22, 0.94);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    height: 100%;
     display: flex;
     flex-direction: column;
+    background: var(--glass-bg-card);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius);
     overflow: hidden;
+    box-shadow: var(--glass-shadow);
 }
 
 .replay-lb-header {
@@ -2371,7 +2545,7 @@ select option:checked {
 
 .replay-lb-title {
     font-family: 'Rajdhani', sans-serif;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
     letter-spacing: 0.8px;
     color: #fff;
@@ -2379,65 +2553,68 @@ select option:checked {
 
 .replay-lb-radios {
     display: flex;
-    gap: 6px;
+    gap: 5px;
 }
 
 .lb-radio-btn {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    border: 2px solid #888;
-    background: #444;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.08);
     color: #fff;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 800;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 0;
+    transition: all 0.15s ease;
 }
 
 .lb-radio-btn.active {
-    background: #329632;
-    border-color: #50c850;
+    background: #10b981;
+    border-color: #34d399;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
 .replay-lb-sub {
     padding: 0 12px 6px 12px;
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--text-muted);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .replay-lb-rows {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 6px 8px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
 }
 
 .replay-lb-row {
     display: grid;
-    grid-template-columns: 24px 4px 1fr auto 36px;
+    grid-template-columns: 22px 3px 1fr auto 36px;
     align-items: center;
     gap: 6px;
     padding: 4px 7px;
     border-radius: 5px;
-    font-size: 12px;
+    font-size: 11.5px;
     cursor: pointer;
     user-select: none;
     transition: background 0.12s;
 }
 
 .replay-lb-row:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .replay-lb-row.selected-primary {
-    background: rgba(215, 222, 234, 0.92);
+    background: rgba(255, 255, 255, 0.92);
     color: #0b0e17;
 }
 
@@ -2448,7 +2625,7 @@ select option:checked {
 }
 
 .replay-lb-row.selected-compare {
-    background: rgba(0, 210, 190, 0.2);
+    background: rgba(0, 210, 190, 0.18);
     border: 1px solid #00d2be;
 }
 
@@ -2462,7 +2639,7 @@ select option:checked {
     font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2471,24 +2648,24 @@ select option:checked {
 .lb-pit-tag {
     background: #ffffff;
     color: #080b12;
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
-    padding: 0 4px;
+    padding: 0 3px;
     border-radius: 3px;
 }
 
 .lb-out-tag {
-    background: rgba(155, 17, 30, 0.95);
+    background: rgba(239, 68, 68, 0.95);
     color: #ffffff;
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 800;
-    padding: 0 4px;
+    padding: 0 3px;
     border-radius: 3px;
 }
 
 .lb-gap {
     font-family: 'Rajdhani', monospace;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     color: var(--text-secondary);
     text-align: right;
@@ -2502,13 +2679,13 @@ select option:checked {
 }
 
 .lb-tyre-badge {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 900;
     color: #090c14;
     position: relative;
@@ -2517,13 +2694,19 @@ select option:checked {
 
 .lb-tyre-life {
     font-family: 'Rajdhani', monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--text-muted);
 }
 
-/* --- Bottom Scrubbable Progress Bar with Event Markers --- */
-.replay-bottom-bar {
-    background: rgba(12, 16, 28, 0.95);
+/* --- Bottom Player Console Deck --- */
+.replay-player-deck {
+    background: var(--glass-bg-card);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius);
+    padding: 12px 18px;
+    box-shadow: var(--glass-shadow);
 }
 
 .replay-progress-container {
@@ -2567,7 +2750,7 @@ select option:checked {
 
 .replay-progress-track-wrap {
     position: relative;
-    height: 24px;
+    height: 22px;
     display: flex;
     align-items: center;
 }
@@ -2576,8 +2759,8 @@ select option:checked {
     position: absolute;
     left: 0;
     right: 0;
-    top: 4px;
-    bottom: 4px;
+    top: 5px;
+    bottom: 5px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 6px;
     pointer-events: none;
@@ -2589,14 +2772,14 @@ select option:checked {
     top: 0;
     bottom: 0;
     min-width: 3px;
-    opacity: 0.72;
+    opacity: 0.75;
 }
 
 #replayProgressScrubber {
     position: relative;
     z-index: 2;
     width: 100%;
-    accent-color: var(--accent);
+    accent-color: var(--accent-red);
     background: transparent;
     cursor: pointer;
 }
@@ -2606,7 +2789,7 @@ select option:checked {
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
 }
 
 .replay-transport-btns,
@@ -2617,10 +2800,75 @@ select option:checked {
     align-items: center;
 }
 
-@media (max-width: 1200px) {
+.btn-play-highlight {
+    background: linear-gradient(135deg, var(--accent-red), #b30500) !important;
+    border-color: var(--accent-red) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(225, 6, 0, 0.4) !important;
+}
+
+.btn-play-highlight:hover {
+    box-shadow: 0 6px 20px rgba(225, 6, 0, 0.6) !important;
+    transform: translateY(-1px);
+}
+
+/* --- Responsive Layout for 2D Replay --- */
+@media (max-width: 1280px) {
+    .replay-theater-stage {
+        grid-template-columns: 250px minmax(0, 1fr) 250px;
+    }
+}
+
+@media (max-width: 1060px) {
+    .replay-theater-stage {
+        height: auto;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .replay-center-stage {
+        grid-column: span 2;
+        height: 480px;
+        order: -1;
+    }
+
+    .replay-left-hud {
+        height: 420px;
+    }
+
+    .replay-right-leaderboard {
+        height: 420px;
+    }
+}
+
+@media (max-width: 768px) {
     .replay-theater-stage {
         grid-template-columns: 1fr;
     }
+
+    .replay-center-stage {
+        grid-column: span 1;
+        height: 380px;
+    }
+
+    .replay-left-hud {
+        height: auto;
+    }
+
+    .replay-right-leaderboard {
+        height: 380px;
+    }
+
+    .replay-control-strip {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .replay-options-strip {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
+
 
 

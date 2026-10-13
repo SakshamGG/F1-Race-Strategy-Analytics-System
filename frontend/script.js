@@ -3000,6 +3000,8 @@ const trackReplayState = {
     playing: false,
     speed: 1.0,
     timerId: null,
+    animFrameId: null,
+    interpRatio: 0,
     rotationDeg: 0,
     showDrsZones: true,
     showSectorMarkers: true,
@@ -3211,6 +3213,14 @@ function toggleTrackReplayPlayback() {
     }
 }
 
+function formatReplayClockTime(secTotal) {
+    const s = Math.max(0, Math.floor(secTotal || 0));
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
 function startTrackReplayPlayback() {
     if (!trackReplayState.data) return;
     stopTrackReplayPlayback();
@@ -3218,21 +3228,66 @@ function startTrackReplayPlayback() {
     const btn = document.getElementById('btnTrackReplayPlay');
     if (btn) btn.textContent = '⏸ Pause Replay';
 
-    const intervalMs = Math.max(25, Math.round(95 / trackReplayState.speed));
-    trackReplayState.timerId = setInterval(() => {
-        const frames = getActiveReplayFrames();
-        if (!frames.length) return;
-        if (trackReplayState.frameIndex < frames.length - 1) {
-            trackReplayState.frameIndex++;
-            renderTrackReplayAll();
-        } else {
-            stopTrackReplayPlayback();
+    // Target lap duration at 1x speed: 18.0 seconds per lap (~9x slower than the initial pacing)
+    // Continuous dynamic playback: calculates exact frame spacing so 1 lap is always 18s at 1x
+    const frames = getActiveReplayFrames();
+    const totalLaps = (trackReplayState.data && trackReplayState.data.session_info && trackReplayState.data.session_info.total_laps) || 57;
+    const framesPerLap = Math.max(1, (frames.length || 1) / Math.max(1, totalLaps));
+    const targetLapDurationMs = 18000;
+    const baseFrameDurationMs = Math.max(100, Math.round(targetLapDurationMs / framesPerLap));
+
+    let lastTime = performance.now();
+    let accumulatedMs = trackReplayState.interpRatio * (baseFrameDurationMs / trackReplayState.speed);
+
+    function step(now) {
+        if (!trackReplayState.playing) return;
+        const delta = Math.min(100, now - lastTime);
+        lastTime = now;
+
+        const frameIntervalMs = Math.max(30, Math.round(baseFrameDurationMs / trackReplayState.speed));
+        accumulatedMs += delta;
+
+        const curFrames = getActiveReplayFrames();
+        if (!curFrames.length) return;
+
+        let frameChanged = false;
+        while (accumulatedMs >= frameIntervalMs) {
+            accumulatedMs -= frameIntervalMs;
+            if (trackReplayState.frameIndex < curFrames.length - 1) {
+                trackReplayState.frameIndex++;
+                frameChanged = true;
+            } else {
+                trackReplayState.frameIndex = curFrames.length - 1;
+                trackReplayState.interpRatio = 0;
+                renderTrackReplayAll();
+                stopTrackReplayPlayback();
+                return;
+            }
         }
-    }, intervalMs);
+
+        trackReplayState.interpRatio = Math.max(0, Math.min(1, accumulatedMs / frameIntervalMs));
+
+        // When stepping into a new keyframe, update heavy DOM tables (Leaderboard, Weather, Cards)
+        if (frameChanged) {
+            renderTrackReplayDOM(curFrames[trackReplayState.frameIndex]);
+        }
+
+        // Every 60 FPS tick: continuously glide cars, update scrubber, tick race clock
+        renderTrackReplayContinuous(curFrames);
+
+        trackReplayState.animFrameId = requestAnimationFrame(step);
+    }
+
+    trackReplayState.animFrameId = requestAnimationFrame(step);
 }
 
 function stopTrackReplayPlayback() {
     trackReplayState.playing = false;
+    trackReplayState.interpRatio = 0;
+    if (trackReplayState.animFrameId) {
+        cancelAnimationFrame(trackReplayState.animFrameId);
+        trackReplayState.animFrameId = null;
+    }
     if (trackReplayState.timerId) {
         clearInterval(trackReplayState.timerId);
         trackReplayState.timerId = null;
@@ -3254,22 +3309,27 @@ function setTrackReplaySpeed(spd) {
 function jumpTrackReplayFrames(delta) {
     const frames = getActiveReplayFrames();
     if (!frames.length) return;
+    trackReplayState.interpRatio = 0;
     trackReplayState.frameIndex = Math.max(0, Math.min(frames.length - 1, trackReplayState.frameIndex + delta));
     renderTrackReplayAll();
 }
 
 function restartTrackReplay() {
+    trackReplayState.interpRatio = 0;
     trackReplayState.frameIndex = 0;
     renderTrackReplayAll();
 }
 
 function onReplayScrubberInput(val) {
-    trackReplayState.frameIndex = parseInt(val, 10) || 0;
+    const floatVal = parseFloat(val) || 0;
+    const baseFrame = Math.floor(floatVal);
+    trackReplayState.frameIndex = baseFrame;
+    trackReplayState.interpRatio = Math.max(0, Math.min(1, floatVal - baseFrame));
     renderTrackReplayAll();
 }
 
 // ==============================================================================
-// RENDER ALL 2D TRACK REPLAY COMPONENTS
+// RENDER ALL 2D TRACK REPLAY COMPONENTS (Continuous 60 FPS + DOM Keyframe)
 // ==============================================================================
 
 function renderTrackReplayAll() {
@@ -3279,13 +3339,17 @@ function renderTrackReplayAll() {
     const frame = frames[trackReplayState.frameIndex] || frames[0];
     if (!frame) return;
 
-    const scrubber = document.getElementById('replayProgressScrubber');
-    if (scrubber) scrubber.value = String(trackReplayState.frameIndex);
+    renderTrackReplayDOM(frame);
+    renderTrackReplayContinuous(frames);
+}
 
+// 1. Heavy DOM elements updated on keyframe boundaries (Leaderboard, Weather, Cards)
+function renderTrackReplayDOM(frame) {
+    const d = trackReplayState.data;
+    if (!d || !frame) return;
     const info = d.session_info || {};
     const mode = trackReplayState.sessionType;
 
-    // 1. Update Top-Left Session & Lap/Clock/Status Banner
     const evEl = document.getElementById('replayBannerEvent');
     if (evEl) evEl.textContent = `${info.season || ''} ${info.race_name || ''}`;
     const cirEl = document.getElementById('replayBannerCircuit');
@@ -3301,9 +3365,6 @@ function renderTrackReplayAll() {
             lapEl.textContent = `LAP ${frame.lap} / ${frame.total_laps}`;
         }
     }
-
-    const clkEl = document.getElementById('replayClockText');
-    if (clkEl) clkEl.textContent = frame.time_str || '00:00:00';
 
     const stBadge = document.getElementById('replayTrackStatusBadge');
     if (stBadge) {
@@ -3323,7 +3384,7 @@ function renderTrackReplayAll() {
         }
     }
 
-    // 2. Update Weather HUD (WeatherComponent)
+    // Weather HUD (WeatherComponent)
     const w = frame.weather || {};
     const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
     setTxt('rwTrackTemp', `${w.track_temp ?? 37.5}°C`);
@@ -3332,30 +3393,67 @@ function renderTrackReplayAll() {
     setTxt('rwWind', `${w.wind_speed ?? 9.0} km/h ${w.wind_cardinal || 'NNE'}`);
     setTxt('rwRain', w.rain_state || 'DRY (0%)');
 
-    // 3. Progress bar labels
-    setTxt('replayProgressLeftLabel', mode === 'Qualifying'
-        ? `${trackReplayState.qualiSegment} Flying Lap (${frame.progress_pct}%)`
-        : `Lap ${frame.lap} / ${frame.total_laps} (${frame.progress_pct}%)`);
-    setTxt('replayProgressRightLabel', frame.time_str || '00:00:00');
-
-    // 4. Render Selected Driver Telemetry & Tyre Health Box
+    // Selected Driver Telemetry Card
     renderReplaySelectedDriverInfo(frame);
 
-    // 5. Render Live Championship Overlay (if visible)
+    // Championship Overlay (if visible)
     if (trackReplayState.showChampionship) {
         renderTrackReplayChampionship();
     }
 
-    // 6. Render Leaderboard (Race / Sprint / Qualifying / Practice)
+    // Leaderboard Timing Tower
     renderTrackReplayLeaderboard(frame);
+}
 
-    // 7. Render Split Telemetry Trace (if active)
+// 2. Continuous 60 FPS updates: Smooth Canvas, Continuous Scrubber, Live Clock, Split Playhead
+function renderTrackReplayContinuous(curFrames) {
+    if (!curFrames || !curFrames.length) return;
+    const fIdx = trackReplayState.frameIndex;
+    const frame = curFrames[fIdx] || curFrames[0];
+    const nextFrame = curFrames[Math.min(curFrames.length - 1, fIdx + 1)] || frame;
+    const interp = (trackReplayState.playing && typeof trackReplayState.interpRatio === 'number') ? trackReplayState.interpRatio : (trackReplayState.interpRatio || 0);
+
+    // Continuous Scrubber
+    const scrubber = document.getElementById('replayProgressScrubber');
+    if (scrubber) {
+        scrubber.value = String((fIdx + interp).toFixed(2));
+    }
+
+    // Continuous Stopwatch Clock
+    if (frame && nextFrame) {
+        const t0 = frame.t || 0;
+        const t1 = nextFrame.t || t0;
+        const dT = Math.max(0, t1 - t0);
+        const curSeconds = t0 + dT * interp;
+        const timeStr = formatReplayClockTime(curSeconds);
+        const clkEl = document.getElementById('replayClockText');
+        if (clkEl) clkEl.textContent = timeStr;
+        const rightLbl = document.getElementById('replayProgressRightLabel');
+        if (rightLbl) rightLbl.textContent = timeStr;
+
+        const leftLbl = document.getElementById('replayProgressLeftLabel');
+        if (leftLbl) {
+            const p0 = frame.progress_pct || 0;
+            const p1 = nextFrame.progress_pct || p0;
+            const curPct = (p0 + Math.max(0, p1 - p0) * interp).toFixed(1);
+            const mode = trackReplayState.sessionType;
+            if (mode === 'Qualifying') {
+                leftLbl.textContent = `${trackReplayState.qualiSegment} Flying Lap (${curPct}%)`;
+            } else if (mode.startsWith('FP')) {
+                leftLbl.textContent = `${mode} Practice Lap (${curPct}%)`;
+            } else {
+                leftLbl.textContent = `Lap ${frame.lap} / ${frame.total_laps} (${curPct}%)`;
+            }
+        }
+    }
+
+    // Redraw 2D Track Canvas with smooth car motion
+    renderTrackReplayCanvas();
+
+    // Redraw Split Telemetry Trace with continuous playhead
     if (trackReplayState.showSplitChart) {
         renderReplaySplitTelemetryCanvas(frame);
     }
-
-    // 8. Render 2D GPS Circuit Canvas
-    renderTrackReplayCanvas(frame);
 }
 
 function renderReplayProgressEvents() {
@@ -3605,9 +3703,23 @@ function clearReplayComparisonDrivers() {
     renderTrackReplayAll();
 }
 
-// ==============================================================================
-// 2D GPS CIRCUIT CANVAS RENDERER (build_track_from_example_lap & draw_finish_line)
-// ==============================================================================
+// Interpolate world (x, y) coordinates along track centerline geometry at fractional lap distance relDist in [0, 1]
+function getReplayTrackXY(geo, relDist) {
+    if (!geo) return [0, 0];
+    const cx = geo.x_center || [];
+    const cy = geo.y_center || [];
+    const n = cx.length;
+    if (n < 2) return [0, 0];
+    let frac = (Number(relDist) || 0) % 1.0;
+    if (frac < 0) frac += 1.0;
+    const idxF = frac * (n - 1);
+    const i0 = Math.floor(idxF) % (n - 1);
+    const i1 = (i0 + 1) % n;
+    const alpha = idxF - Math.floor(idxF);
+    const x = cx[i0] * (1.0 - alpha) + cx[i1] * alpha;
+    const y = cy[i0] * (1.0 - alpha) + cy[i1] * alpha;
+    return [x, y];
+}
 
 function renderTrackReplayCanvas(frameInput) {
     const canvas = document.getElementById('trackReplayCanvas');
@@ -3756,6 +3868,10 @@ function renderTrackReplayCanvas(frameInput) {
     const driversObj = (frame && frame.drivers) || {};
     const entries = Object.entries(driversObj);
 
+    // Look ahead to next frame for smooth sub-frame interpolation
+    const nextFrame = frames[Math.min(frames.length - 1, trackReplayState.frameIndex + 1)];
+    const interp = (trackReplayState.playing && typeof trackReplayState.interpRatio === 'number') ? trackReplayState.interpRatio : 0;
+
     // Draw non-selected cars first, then selected cars on top
     entries.sort((a, b) => {
         const aSel = trackReplayState.selectedDrivers.includes(a[0]) ? 1 : 0;
@@ -3765,39 +3881,118 @@ function renderTrackReplayCanvas(frameInput) {
 
     entries.forEach(([code, st]) => {
         if (st.is_out) return; // Retired cars shown as OUT on leaderboard
-        const [sx, sy] = worldToScreen(st.x || 0, st.y || 0);
+        let curRel = st.rel_dist || 0;
+
+        // Smooth track-following position interpolation towards nextFrame
+        if (interp > 0 && typeof st.rel_dist === 'number' && nextFrame && nextFrame.drivers && nextFrame.drivers[code] && !nextFrame.drivers[code].is_out) {
+            const nextSt = nextFrame.drivers[code];
+            let dRel = (nextSt.rel_dist || 0) - st.rel_dist;
+            // Handle lap wrap-around across start/finish line
+            if (dRel < -0.5) dRel += 1.0;
+            else if (dRel > 0.5) dRel -= 1.0;
+            curRel = st.rel_dist + dRel * interp;
+        }
+
+        const [wx, wy] = getReplayTrackXY(geo, curRel);
+        const [sx, sy] = worldToScreen(wx, wy);
+
+        // Compute forward heading in screen space along the track curve
+        const [aheadWx, aheadWy] = getReplayTrackXY(geo, curRel + 0.003);
+        const [aheadSx, aheadSy] = worldToScreen(aheadWx, aheadWy);
+        const screenAngle = Math.atan2(aheadSy - sy, aheadSx - sx);
+
         const isPrimary = trackReplayState.selectedDrivers[0] === code;
         const isCompare = trackReplayState.selectedDrivers.slice(1).includes(code);
         const col = drvColorMap[code] || '#ffffff';
 
         ctx.save();
+
+        // Subtle motion trail behind each car (gives real broadcast GPS stream effect)
+        const [trailWx1, trailWy1] = getReplayTrackXY(geo, curRel - 0.0035);
+        const [trailSx1, trailSy1] = worldToScreen(trailWx1, trailWy1);
+        const [trailWx2, trailWy2] = getReplayTrackXY(geo, curRel - 0.007);
+        const [trailSx2, trailSy2] = worldToScreen(trailWx2, trailWy2);
+
+        ctx.strokeStyle = col;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.28;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(trailSx2, trailSy2);
+        ctx.lineTo(trailSx1, trailSy1);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+
+        // Selection halo
         if (isPrimary || isCompare) {
             ctx.beginPath();
-            ctx.arc(sx, sy, isPrimary ? 12 : 10, 0, Math.PI * 2);
+            ctx.arc(sx, sy, isPrimary ? 13 : 11, 0, Math.PI * 2);
             ctx.strokeStyle = isPrimary ? '#ffffff' : '#00d2be';
             ctx.lineWidth = 2.2;
             ctx.stroke();
         }
-        ctx.beginPath();
-        ctx.arc(sx, sy, isPrimary ? 7 : 5.5, 0, Math.PI * 2);
+
+        // Draw sleek directional car body
+        ctx.translate(sx, sy);
+        ctx.rotate(screenAngle);
+
+        // Car main body dot / capsule
         ctx.fillStyle = col;
+        ctx.beginPath();
+        if (isPrimary || isCompare) {
+            ctx.ellipse(0, 0, 7.5, 5, 0, 0, Math.PI * 2);
+        } else {
+            ctx.ellipse(0, 0, 6, 4, 0, 0, Math.PI * 2);
+        }
         ctx.fill();
         ctx.strokeStyle = '#060911';
         ctx.lineWidth = 1.3;
         ctx.stroke();
 
+        // Forward nose pointer
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(isPrimary ? 6.5 : 5, -1.8);
+        ctx.lineTo(isPrimary ? 9.5 : 7.8, 0);
+        ctx.lineTo(isPrimary ? 6.5 : 5, 1.8);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore(); // Restores translation & rotation
+
+        // High-contrast driver code label
         if (trackReplayState.showDriverLabels || isPrimary || isCompare) {
-            ctx.font = (isPrimary || isCompare) ? 'bold 11.5px Rajdhani, sans-serif' : '600 10px Rajdhani, sans-serif';
-            ctx.fillStyle = isPrimary ? '#ffffff' : 'rgba(255, 255, 255, 0.88)';
-            ctx.fillText(code, sx + 9, sy + 3);
+            ctx.save();
+            ctx.font = (isPrimary || isCompare) ? 'bold 11px Rajdhani, sans-serif' : '600 9.5px Rajdhani, sans-serif';
+            const labelX = sx + 10;
+            const labelY = sy + 3.5;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.fillText(code, labelX + 1, labelY + 1);
+            ctx.fillStyle = isPrimary ? '#ffffff' : (isCompare ? '#00d2be' : 'rgba(255, 255, 255, 0.92)');
+            ctx.fillText(code, labelX, labelY);
+            ctx.restore();
         }
-        ctx.restore();
     });
 
     // 6. Draw Safety Car (if active on track)
     const sc = frame && frame.safety_car;
     if (sc && sc.active) {
-        const [scx, scy] = worldToScreen(sc.x || 0, sc.y || 0);
+        let scWx = sc.x || 0;
+        let scWy = sc.y || 0;
+        if (interp > 0 && typeof sc.rel_dist === 'number' && nextFrame && nextFrame.safety_car && nextFrame.safety_car.active) {
+            const nextSc = nextFrame.safety_car;
+            let dScRel = (nextSc.rel_dist || 0) - sc.rel_dist;
+            if (dScRel < -0.5) dScRel += 1.0;
+            else if (dScRel > 0.5) dScRel -= 1.0;
+            const curScRel = sc.rel_dist + dScRel * interp;
+            const [twx, twy] = getReplayTrackXY(geo, curScRel);
+            if (twx !== 0 || twy !== 0) {
+                scWx = twx;
+                scWy = twy;
+            }
+        }
+        const [scx, scy] = worldToScreen(scWx, scWy);
         drawSafetyCarNode(ctx, scx, scy, sc);
     }
 }
@@ -3919,7 +4114,7 @@ document.addEventListener('keydown', (e) => {
         setTrackReplaySpeed(Math.min(8, trackReplayState.speed * 2));
     } else if (e.code === 'ArrowDown') {
         e.preventDefault();
-        setTrackReplaySpeed(Math.max(0.25, trackReplayState.speed / 2));
+        setTrackReplaySpeed(Math.max(0.1, trackReplayState.speed / 2));
     } else if (e.key === 'r' || e.key === 'R') {
         restartTrackReplay();
     } else if (e.key === 'd' || e.key === 'D') {
@@ -3932,8 +4127,8 @@ document.addEventListener('keydown', (e) => {
         clearReplayComparisonDrivers();
     } else if (e.key === 'h' || e.key === 'H') {
         toggleReplayControlsHelp();
-    } else if (['1', '2', '3', '4'].includes(e.key)) {
-        const speeds = { '1': 0.5, '2': 1, '3': 2, '4': 4 };
+    } else if (['1', '2', '3', '4', '5', '6'].includes(e.key)) {
+        const speeds = { '1': 0.1, '2': 0.25, '3': 0.5, '4': 1, '5': 2, '6': 4 };
         setTrackReplaySpeed(speeds[e.key]);
     }
 });
