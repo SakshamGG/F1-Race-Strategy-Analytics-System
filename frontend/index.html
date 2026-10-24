@@ -156,7 +156,7 @@
             <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <label for="driversSeasonFilter"><strong>Season / Year:</strong></label>
                 <div class="season-combo-wrapper">
-                    <input type="text" id="driversSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onDriverSeasonChange()" onkeydown="if(event.key==='Enter') onDriverSeasonChange()" autocomplete="off">
+                    <input type="text" id="driversSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2024, all)" value="2024" onchange="onDriverSeasonChange()" onkeydown="if(event.key==='Enter') onDriverSeasonChange()" autocomplete="off">
                     <button class="btn btn-secondary btn-sm" onclick="onDriverSeasonChange()" title="Load Season">Load</button>
                 </div>
                 <button class="btn btn-primary" onclick="syncDriversFromApi()" id="btnSyncDrivers" style="margin-left:auto;">🔄 Sync from API</button>
@@ -192,7 +192,7 @@
             <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <label for="constructorsSeasonFilter"><strong>Season / Year:</strong></label>
                 <div class="season-combo-wrapper">
-                    <input type="text" id="constructorsSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onConstructorSeasonChange()" onkeydown="if(event.key==='Enter') onConstructorSeasonChange()" autocomplete="off">
+                    <input type="text" id="constructorsSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2024, all)" value="2024" onchange="onConstructorSeasonChange()" onkeydown="if(event.key==='Enter') onConstructorSeasonChange()" autocomplete="off">
                     <button class="btn btn-secondary btn-sm" onclick="onConstructorSeasonChange()" title="Load Season">Load</button>
                 </div>
                 <button class="btn btn-primary" onclick="syncConstructorsFromApi()" id="btnSyncConstructors" style="margin-left:auto;">🔄 Sync from API</button>
@@ -226,7 +226,7 @@
             <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <label for="racesSeasonFilter"><strong>Season / Year:</strong></label>
                 <div class="season-combo-wrapper">
-                    <input type="text" id="racesSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onRaceSeasonChange()" onkeydown="if(event.key==='Enter') onRaceSeasonChange()" autocomplete="off">
+                    <input type="text" id="racesSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2024, all)" value="2024" onchange="onRaceSeasonChange()" onkeydown="if(event.key==='Enter') onRaceSeasonChange()" autocomplete="off">
                     <button class="btn btn-secondary btn-sm" onclick="onRaceSeasonChange()" title="Load Season">Load</button>
                 </div>
                 <button class="btn btn-secondary" onclick="syncAllRaceResultsForSeason()" id="btnSyncAllResults" style="margin-left:auto;">📥 Sync All Race Results</button>
@@ -263,7 +263,7 @@
             <div class="form-inline mb-1" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <label for="standingsSeasonFilter"><strong>Season / Year:</strong></label>
                 <div class="season-combo-wrapper">
-                    <input type="text" id="standingsSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2026, all)" value="2026" onchange="onStandingsSeasonChange()" onkeydown="if(event.key==='Enter') onStandingsSeasonChange()" autocomplete="off">
+                    <input type="text" id="standingsSeasonFilter" list="seasonSuggestionsList" class="season-combo-input" placeholder="Type or pick year (e.g. 1994, 2024, all)" value="2024" onchange="onStandingsSeasonChange()" onkeydown="if(event.key==='Enter') onStandingsSeasonChange()" autocomplete="off">
                     <button class="btn btn-primary btn-sm" onclick="loadStandings()" id="btnLoadStandings">Load Standings</button>
                 </div>
                 <button class="btn btn-primary" onclick="syncStandingsFromApi()" id="btnSyncStandings" style="margin-left:auto;">🔄 Sync from Official API</button>

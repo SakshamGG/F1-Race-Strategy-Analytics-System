@@ -123,7 +123,7 @@ function truncate(str, len = 60) {
     return str.length > len ? str.substring(0, len) + '...' : str;
 }
 
-function parseSeasonInput(raw, defaultYear = '2026') {
+function parseSeasonInput(raw, defaultYear = '2024') {
     if (!raw) return defaultYear;
     const trimmed = String(raw).trim();
     if (!trimmed) return defaultYear;
@@ -269,9 +269,9 @@ async function loadDashboard() {
 async function loadDrivers(season) {
     if (season === undefined) {
         const filterElem = document.getElementById('driversSeasonFilter');
-        season = filterElem ? filterElem.value : '2026';
+        season = filterElem ? filterElem.value : '2024';
     }
-    season = parseSeasonInput(season, '2026');
+    season = parseSeasonInput(season, '2024');
     const isSeason = season && season !== 'all';
     const tbody = document.getElementById('driversBody');
     const subtitle = document.getElementById('driversSubtitle');
@@ -340,7 +340,7 @@ async function loadDrivers(season) {
 
 function onDriverSeasonChange() {
     const sel = document.getElementById('driversSeasonFilter');
-    const season = parseSeasonInput(sel ? sel.value : '2026', '2026');
+    const season = parseSeasonInput(sel ? sel.value : '2024', '2024');
     loadDrivers(season);
 }
 
@@ -350,8 +350,8 @@ function loadCustomDriverYear() {
 
 async function syncDriversFromApi() {
     const sel = document.getElementById('driversSeasonFilter');
-    let season = parseSeasonInput(sel ? sel.value : '2026', '2026');
-    if (season === 'all') season = '2026';
+    let season = parseSeasonInput(sel ? sel.value : '2024', '2024');
+    if (season === 'all') season = '2024';
 
     setLoading('btnSyncDrivers', true);
     try {
@@ -429,9 +429,9 @@ async function deleteDriver(id, name) {
 async function loadConstructors(season) {
     if (season === undefined) {
         const filterElem = document.getElementById('constructorsSeasonFilter');
-        season = filterElem ? filterElem.value : '2026';
+        season = filterElem ? filterElem.value : '2024';
     }
-    season = parseSeasonInput(season, '2026');
+    season = parseSeasonInput(season, '2024');
     const isSeason = season && season !== 'all';
     const tbody = document.getElementById('constructorsBody');
     const subtitle = document.getElementById('constructorsSubtitle');
@@ -495,7 +495,7 @@ async function loadConstructors(season) {
 
 function onConstructorSeasonChange() {
     const sel = document.getElementById('constructorsSeasonFilter');
-    const season = parseSeasonInput(sel ? sel.value : '2026', '2026');
+    const season = parseSeasonInput(sel ? sel.value : '2024', '2024');
     loadConstructors(season);
 }
 
@@ -505,8 +505,8 @@ function loadCustomConstructorYear() {
 
 async function syncConstructorsFromApi() {
     const sel = document.getElementById('constructorsSeasonFilter');
-    let season = parseSeasonInput(sel ? sel.value : '2026', '2026');
-    if (season === 'all') season = '2026';
+    let season = parseSeasonInput(sel ? sel.value : '2024', '2024');
+    if (season === 'all') season = '2024';
 
     setLoading('btnSyncConstructors', true);
     try {
@@ -585,9 +585,9 @@ let currentRacesMap = {};
 async function loadRaces(season) {
     if (season === undefined) {
         const filterElem = document.getElementById('racesSeasonFilter');
-        season = filterElem ? filterElem.value : '2026';
+        season = filterElem ? filterElem.value : '2024';
     }
-    season = parseSeasonInput(season, '2026');
+    season = parseSeasonInput(season, '2024');
     const tbody = document.getElementById('racesBody');
     const subtitle = document.getElementById('racesSubtitle');
     currentViewedRace = null;
@@ -628,7 +628,7 @@ async function loadRaces(season) {
 
 function onRaceSeasonChange() {
     const sel = document.getElementById('racesSeasonFilter');
-    const season = parseSeasonInput(sel ? sel.value : '2026', '2026');
+    const season = parseSeasonInput(sel ? sel.value : '2024', '2024');
     loadRaces(season);
 }
 
@@ -638,8 +638,8 @@ function loadCustomRaceYear() {
 
 async function syncRacesFromApi() {
     const sel = document.getElementById('racesSeasonFilter');
-    let season = parseSeasonInput(sel ? sel.value : '2026', '2026');
-    if (season === 'all') season = '2026';
+    let season = parseSeasonInput(sel ? sel.value : '2024', '2024');
+    if (season === 'all') season = '2024';
 
     setLoading('btnSyncRaces', true);
     try {
@@ -656,8 +656,8 @@ async function syncRacesFromApi() {
 
 async function syncAllRaceResultsForSeason() {
     const sel = document.getElementById('racesSeasonFilter');
-    let season = parseSeasonInput(sel ? sel.value : '2026', '2026');
-    if (season === 'all') season = '2026';
+    let season = parseSeasonInput(sel ? sel.value : '2024', '2024');
+    if (season === 'all') season = '2024';
 
     setLoading('btnSyncAllResults', true);
     try {
@@ -869,10 +869,10 @@ async function syncCurrentRaceLaps() {
 async function loadStandings(season) {
     if (season === undefined) {
         const filterElem = document.getElementById('standingsSeasonFilter');
-        season = filterElem ? filterElem.value : '2026';
+        season = filterElem ? filterElem.value : '2024';
     }
-    season = parseSeasonInput(season, '2026');
-    if (!season || season === 'all') season = '2026';
+    season = parseSeasonInput(season, '2024');
+    if (!season || season === 'all') season = '2024';
 
     const subtitle = document.getElementById('standingsSubtitle');
     if (subtitle) subtitle.textContent = `Driver and constructor championship standings for the ${season} season`;
@@ -927,7 +927,7 @@ async function loadStandings(season) {
 
 function onStandingsSeasonChange() {
     const sel = document.getElementById('standingsSeasonFilter');
-    const season = parseSeasonInput(sel ? sel.value : '2026', '2026');
+    const season = parseSeasonInput(sel ? sel.value : '2024', '2024');
     loadStandings(season);
 }
 
@@ -937,8 +937,8 @@ function loadCustomStandingsYear() {
 
 async function recalculateStandingsForSeason() {
     const sel = document.getElementById('standingsSeasonFilter');
-    let season = parseSeasonInput(sel ? sel.value : '2026', '2026');
-    if (season === 'all') season = '2026';
+    let season = parseSeasonInput(sel ? sel.value : '2024', '2024');
+    if (season === 'all') season = '2024';
 
     setLoading('btnRecalcStandings', true);
     try {
@@ -954,8 +954,8 @@ async function recalculateStandingsForSeason() {
 
 async function syncStandingsFromApi() {
     const sel = document.getElementById('standingsSeasonFilter');
-    let season = parseSeasonInput(sel ? sel.value : '2026', '2026');
-    if (season === 'all') season = '2026';
+    let season = parseSeasonInput(sel ? sel.value : '2024', '2024');
+    if (season === 'all') season = '2024';
 
     setLoading('btnSyncStandings', true);
     try {
@@ -1350,8 +1350,10 @@ async function importData(type) {
 }
 
 async function importResults() {
-    const season = document.getElementById('importResultsSeason').value;
-    const round = document.getElementById('importResultsRound').value;
+    const seasonEl = document.getElementById('importResultsSeason');
+    const roundEl = document.getElementById('importResultsRound');
+    const season = seasonEl ? seasonEl.value : (prompt('Enter season year to import:', '2024') || '2024');
+    const round = roundEl ? roundEl.value : (prompt('Enter round number to import:', '1') || '1');
     if (!season || !round) { showToast('Please enter season and round', 'error'); return; }
 
     setLoading('btnImportResults', true);
@@ -1359,20 +1361,24 @@ async function importResults() {
         const data = await apiFetch(`/api/import/results/${season}/${round}`, { method: 'POST' });
         const resultBox = document.getElementById('importResultsResult');
         const skippedNote = data.skipped > 0 ? `<p class="text-muted" style="margin-top:6px;font-size:0.85rem;">ℹ️ ${escapeHtml(data.skipped_reason || 'Skipped items already exist in database to avoid duplicate entries.')}</p>` : '';
-        resultBox.innerHTML = `
-            <p class="text-success">✅ ${escapeHtml(data.message)}</p>
-            <p><strong>Inserted:</strong> ${data.inserted}</p>
-            <p><strong>Skipped:</strong> ${data.skipped}</p>
-            <p><strong>Total from API:</strong> ${data.total_from_api}</p>
-            ${skippedNote}
-        `;
-        showElement('importResultsResult');
+        if (resultBox) {
+            resultBox.innerHTML = `
+                <p class="text-success">✅ ${escapeHtml(data.message)}</p>
+                <p><strong>Inserted:</strong> ${data.inserted}</p>
+                <p><strong>Skipped:</strong> ${data.skipped}</p>
+                <p><strong>Total from API:</strong> ${data.total_from_api}</p>
+                ${skippedNote}
+            `;
+            showElement('importResultsResult');
+        }
         showToast('Race results imported!');
         loadDashboard();
     } catch (err) {
         const resultBox = document.getElementById('importResultsResult');
-        resultBox.innerHTML = `<p class="text-error">❌ ${escapeHtml(err.message)}</p>`;
-        showElement('importResultsResult');
+        if (resultBox) {
+            resultBox.innerHTML = `<p class="text-error">❌ ${escapeHtml(err.message)}</p>`;
+            showElement('importResultsResult');
+        }
         showToast(err.message, 'error');
     } finally {
         setLoading('btnImportResults', false);
@@ -1380,8 +1386,10 @@ async function importResults() {
 }
 
 async function importLaps() {
-    const season = document.getElementById('importLapsSeason').value;
-    const round = document.getElementById('importLapsRound').value;
+    const seasonEl = document.getElementById('importLapsSeason');
+    const roundEl = document.getElementById('importLapsRound');
+    const season = seasonEl ? seasonEl.value : (prompt('Enter season year to import:', '2024') || '2024');
+    const round = roundEl ? roundEl.value : (prompt('Enter round number to import:', '1') || '1');
     if (!season || !round) { showToast('Please enter season and round', 'error'); return; }
 
     setLoading('btnImportLaps', true);
@@ -1389,19 +1397,23 @@ async function importLaps() {
         const data = await apiFetch(`/api/import/laps/${season}/${round}`, { method: 'POST' });
         const resultBox = document.getElementById('importLapsResult');
         const skippedNote = data.skipped > 0 ? `<p class="text-muted" style="margin-top:6px;font-size:0.85rem;">ℹ️ ${escapeHtml(data.skipped_reason || 'Skipped items already exist in database to avoid duplicate entries.')}</p>` : '';
-        resultBox.innerHTML = `
-            <p class="text-success">✅ ${escapeHtml(data.message)}</p>
-            <p><strong>Inserted:</strong> ${data.inserted}</p>
-            <p><strong>Skipped:</strong> ${data.skipped}</p>
-            <p><strong>Total from API:</strong> ${data.total_from_api}</p>
-            ${skippedNote}
-        `;
-        showElement('importLapsResult');
+        if (resultBox) {
+            resultBox.innerHTML = `
+                <p class="text-success">✅ ${escapeHtml(data.message)}</p>
+                <p><strong>Inserted:</strong> ${data.inserted}</p>
+                <p><strong>Skipped:</strong> ${data.skipped}</p>
+                <p><strong>Total from API:</strong> ${data.total_from_api}</p>
+                ${skippedNote}
+            `;
+            showElement('importLapsResult');
+        }
         showToast('Lap times imported!');
     } catch (err) {
         const resultBox = document.getElementById('importLapsResult');
-        resultBox.innerHTML = `<p class="text-error">❌ ${escapeHtml(err.message)}</p>`;
-        showElement('importLapsResult');
+        if (resultBox) {
+            resultBox.innerHTML = `<p class="text-error">❌ ${escapeHtml(err.message)}</p>`;
+            showElement('importLapsResult');
+        }
         showToast(err.message, 'error');
     } finally {
         setLoading('btnImportLaps', false);

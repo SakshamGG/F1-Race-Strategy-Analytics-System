@@ -1996,6 +1996,12 @@ def add_strategy_note():
         if missing:
             return jsonify({"error": f"Missing required field: {missing}"}), 400
 
+        valid_note_types = {"Observation", "Recommendation", "Post-Race Review"}
+        if data.get("note_type") not in valid_note_types:
+            return jsonify({
+                "error": f"Invalid note_type '{data.get('note_type')}'. Must be one of: {', '.join(sorted(valid_note_types))}"
+            }), 400
+
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
@@ -2030,6 +2036,13 @@ def update_strategy_note(note_id):
         existing = cur.fetchone()
         if not existing:
             return jsonify({"error": "Strategy note not found"}), 404
+
+        valid_note_types = {"Observation", "Recommendation", "Post-Race Review"}
+        new_note_type = data.get("note_type", existing["note_type"])
+        if new_note_type not in valid_note_types:
+            return jsonify({
+                "error": f"Invalid note_type '{new_note_type}'. Must be one of: {', '.join(sorted(valid_note_types))}"
+            }), 400
 
         cur.execute(
             """UPDATE STRATEGY_NOTES SET
@@ -2842,7 +2855,12 @@ def get_driver_standings(season):
                 r["position"] = idx
                 rows.append(r)
 
-        standings = [serialize_row(row) for row in rows]
+        standings = []
+        for idx, row in enumerate(rows, start=1):
+            s = serialize_row(row)
+            if s.get("position") is None:
+                s["position"] = idx
+            standings.append(s)
         return jsonify(standings)
     except Exception as e:
         safe_rollback(conn)
@@ -2909,7 +2927,12 @@ def get_constructor_standings(season):
                 r["position"] = idx
                 rows.append(r)
 
-        standings = [serialize_row(row) for row in rows]
+        standings = []
+        for idx, row in enumerate(rows, start=1):
+            s = serialize_row(row)
+            if s.get("position") is None:
+                s["position"] = idx
+            standings.append(s)
         return jsonify(standings)
     except Exception as e:
         safe_rollback(conn)
@@ -3475,6 +3498,7 @@ def recalculate_standings(season=None):
 
 
 @app.route("/api/analytics/simulate-strategy")
+@app.route("/api/db-features/simulate-strategy")
 def simulate_strategy():
     """Simulate race stint and pit window strategies using stored procedure sp_simulate_strategy."""
     conn = None
@@ -3551,8 +3575,12 @@ def simulate_strategy():
 
 
 @app.route("/api/races/<int:race_id>/validate-tyre-rules")
-def validate_tyre_rules(race_id):
+@app.route("/api/db-features/validate-tyre-rules")
+def validate_tyre_rules(race_id=None):
     """Audit F1 two-compound dry tyre rule compliance across race results via stored procedure."""
+    if race_id is None:
+        race_id = request.args.get("race_id", default=1, type=int)
+
     conn = None
     cur = None
     try:
